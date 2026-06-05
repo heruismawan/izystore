@@ -1,0 +1,93 @@
+Berikut adalah **Product Requirement Document (PRD)** untuk pengembangan sistem kasir dan manajemen stok toko HP yang telah kita diskusikan. PRD ini dirancang dengan mempertimbangkan penanganan khusus untuk barang baru dan barang bekas (terutama iPhone).
+
+---
+
+# Product Requirement Document (PRD)
+
+**Nama Proyek:** Sistem Kasir & Manajemen Stok Toko HP (POS-Gadget)
+
+**Fase:** 1.0 (MVP - Minimum Viable Product)
+
+---
+
+## 1. Ringkasan Produk & Tujuan
+
+Tujuan dari proyek ini adalah membangun sistem Point of Sale (POS) dan Inventory Management yang dikhususkan untuk ritel gadget/HP. Sistem ini tidak hanya menangani transaksi kasir biasa, tetapi juga melacak identitas unik barang (IMEI), mengelola variasi spesifikasi barang bekas (seperti *Battery Health* dan garansi), serta mengakomodasi fitur tukar tambah (*trade-in*).
+
+---
+
+## 2. Pengguna Sistem (User Personas & Roles)
+
+* **Kasir / Sales:** Melayani transaksi penjualan, cek stok, input tukar tambah, dan mengajukan diskon.
+* **Owner / Admin:** Mengelola master barang (tambah/edit produk), mengatur harga, menyetujui diskon khusus (*Flexible Pricing Approval*), mencetak barcode, dan melihat laporan keuntungan.
+
+---
+
+## 3. Kebutuhan Fungsional (Functional Requirements)
+
+### Modul 1: Fitur Utama Transaksi (Core POS)
+
+| ID | Fitur | Deskripsi | Kebutuhan Teknis |
+| --- | --- | --- | --- |
+| **F-1.1** | Pencarian & Scan Barcode | Mempercepat input barang ke keranjang belanja. | Mendukung *hardware scanner* USB/Bluetooth dan integrasi kamera untuk scan barcode/QR. |
+| **F-1.2** | Multi-Metode Pembayaran | Mengakomodasi berbagai jenis pembayaran pelanggan. | Opsi pembayaran: Tunai, QRIS, Transfer Bank, Kartu Debit/Kredit, dan Cicilan/Paylater. |
+| **F-1.3** | E-Receipt & Cetak Struk | Efisiensi operasional dan fleksibilitas bukti transaksi. | Integrasi dengan printer thermal (Bluetooth/USB) dan API WhatsApp/Email untuk pengiriman struk digital. |
+| **F-1.4** | Pending Transaction | Menyimpan keranjang belanja sementara jika pelanggan ingin menambah barang. | Fitur *Hold/Resume* transaksi tanpa menghapus data yang sudah di-input sebelumnya. |
+| **F-1.5** | Flexible Pricing | Fitur tawar-menawar harga aman dengan sistem otorisasi. | Kasir bisa memberi diskon manual. Jika diskon melebihi batas batas nominal (misal > Rp100.000), sistem akan memunculkan *pop-up* verifikasi PIN Admin/Owner untuk melanjutkan. |
+
+### Modul 2: Manajemen Stok & Atribut Gadget (Inventory)
+
+| ID | Fitur | Deskripsi | Atribut / Data Field |
+| --- | --- | --- | --- |
+| **F-2.1** | Pelacakan Nomor IMEI / SN | Setiap unit gadget yang masuk dan keluar wajib tercatat identitas uniknya. | String (15 digit untuk IMEI). Harus *unique* per unit barang. |
+| **F-2.2** | Manajemen Varian Produk | Pengelompokkan produk berdasarkan spesifikasi. | Brand, Model, Warna, Kapasitas RAM, Kapasitas Internal (ROM). |
+| **F-2.3** | Atribut Khusus Barang Bekas & iPhone | Form tambahan saat melakukan **Tambah Barang** untuk mendata kondisi HP *second*. | 1. **Kondisi:** Baru / Bekas<br>2. **Battery Health (BH):** Input angka persentase (khusus iPhone/bekas).<br>3. **Status Garansi Asal:** Pilihan Dropdown (**iBox** / **Inter**).<br>4. **Status Garansi Aktif:** Pilihan Dropdown (**Aktif** / **Tidak Aktif**).<br>5. **Grade Fisik:** A / B / C.<br>6. **Fungsi Fitur:** FaceID/Fingerprint (On/Off), TrueTone (On/Off). |
+| **F-2.4** | Barcode Generator | Membuat barcode kustom untuk barang bekas atau aksesoris tanpa barcode pabrik. | Sistem otomatis men-generate kode unik (SKU) saat barang di-input, lalu menyediakan tombol "Cetak Label Barcode" (format stiker mini). |
+
+### Modul 3: Fitur Khusus Ritel HP (Advanced Features)
+
+| ID | Fitur | Deskripsi | Kebutuhan Teknis |
+| --- | --- | --- | --- |
+| **F-3.1** | Modul Tukar Tambah (*Trade-In*) | Memproses transaksi tukar HP lama pelanggan dengan HP baru di toko. | Kalkulator transaksi: (Harga HP Baru - Harga Taksiran HP Lama) = Sisa yang harus dibayar. HP lama otomatis masuk ke stok gudang sebagai "Barang Bekas". |
+| **F-3.2** | Keamanan Hukum (Log Penjual) | Proteksi toko dari risiko membeli HP hasil tindakan kriminal (tadahan). | Saat menerima HP bekas/tukar tambah, sistem wajib meminta input: No. KTP, Nama Penjual, No. HP, dan foto KTP penjual. |
+| **F-3.3** | Manajemen Klaim Garansi | Mencatat dan melacak status garansi toko/resmi. | Pencarian status garansi berdasarkan IMEI saat konsumen datang membawa unit yang rusak. |
+| **F-3.4** | Komisi Sales / Karyawan | Insentif performa penjualan karyawan. | Setiap transaksi kasir wajib memilih nama sales yang melayani, sistem akan otomatis mengakumulasikan bonus per bulan. |
+
+### Modul 4: Laporan & Keamanan (Back-Office)
+
+| ID | Fitur | Deskripsi | Kebutuhan Teknis |
+| --- | --- | --- | --- |
+| **F-4.1** | Laporan Profit Margin | Memantau keuntungan bersih toko dengan akurat. | Memisahkan laporan margin keuntungan penjualan Gadget (biasanya tipis) vs Aksesoris/Suku Cadang (margin tebal). |
+| **F-4.2** | Manajemen Hak Akses | Pembatasan akses fitur demi keamanan finansial toko. | **Kasir:** Hanya bisa Transaksi, Cek Stok, dan ajukan diskon.<br>**Owner/Admin:** Bisa Tambah/Hapus Barang, Ubah Harga Master, Approve Diskon, dan lihat Laporan Keuangan. |
+
+---
+
+## 4. Alur Kerja Utama (Key Workflow)
+
+### A. Alur Menambahkan Barang Bekas (iPhone Second)
+
+1. Admin masuk to menu **Manajemen Stok** -> Klik **Tambah Barang**.
+2. Isi data dasar: Brand (Apple), Model (iPhone 13), Warna, RAM/ROM.
+3. Pilih Jenis Kondisi: **Bekas**.
+4. Sistem memunculkan form spesifik:
+   * Input IMEI.
+   * Input Battery Health (misal: 85%).
+   * Pilih Garansi Asal: **iBox**.
+   * Pilih Garansi Aktif: **Tidak Aktif** (sudah habis masa garansi resminya).
+5. Klik Simpan. Sistem men-generate Barcode Kustom. Admin mencetak barcode untuk ditempel di unit HP.
+
+### B. Alur Transaksi Kasir dengan Flexible Pricing
+
+1. Kasir melakukan scan barcode barang atau mencari nama barang.
+2. Barang masuk ke keranjang belanja (Total: Rp5.000.000).
+3. Pelanggan menawar harga, Kasir menginput diskon manual sebesar Rp150.000.
+4. Karena diskon melewati batas batas Rp100.000, sistem mengunci layar transaksi dan menampilkan dialog: *"Butuh Otorisasi Admin"*.
+5. Admin/Owner memasukkan PIN rahasia mereka.
+6. Kunci terbuka, diskon diaplikasikan, Kasir memilih metode pembayaran (misal: QRIS) dan mencetak struk.
+
+---
+
+## 5. Kebutuhan Non-Fungsional (Non-Functional Requirements)
+
+* **Performa:** Pencarian barang berbasis IMEI harus responsif (< 1 detik) karena data IMEI akan terus bertambah seiring berjalannya waktu.
+* **Skalabilitas Database:** Struktur database relasional harus mampu memisahkan tabel `Produk_Master` (tipe HP) dengan tabel `Produk_Unit` (IMEI & kondisi spesifik per unit HP).
