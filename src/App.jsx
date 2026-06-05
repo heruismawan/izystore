@@ -82,17 +82,22 @@ function AppContent() {
           onClick={() => setIsSidebarOpen(false)}
         />
         {/* Sidebar Component container */}
-        <div className={`
-          relative z-50 md:z-auto h-full flex transition-transform duration-300 ease-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}>
-          <Sidebar 
-            activeView={activeView} 
-            setActiveView={(view) => {
-              setActiveView(view);
-              setIsSidebarOpen(false); // Auto close menu drawer on mobile item click
-            }} 
-          />
+        <div 
+          onClick={() => setIsSidebarOpen(false)} // Close sidebar when clicking empty space
+          className={`
+            relative z-50 md:z-auto h-full flex w-full md:w-auto transition-transform duration-300 ease-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}
+        >
+          <div onClick={(e) => e.stopPropagation()} className="h-full flex">
+            <Sidebar 
+              activeView={activeView} 
+              setActiveView={(view) => {
+                setActiveView(view);
+                setIsSidebarOpen(false); // Auto close menu drawer on mobile item click
+              }} 
+            />
+          </div>
         </div>
       </div>
 
