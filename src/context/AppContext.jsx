@@ -212,8 +212,7 @@ export const AppProvider = ({ children }) => {
           garansiAsal: tradeInDetails.garansiAsal || 'Inter',
           garansiAktif: false,
           gradeFisik: tradeInDetails.gradeFisik || 'B',
-          faceId: tradeInDetails.faceId !== undefined ? tradeInDetails.faceId : true,
-          trueTone: tradeInDetails.trueTone !== undefined ? tradeInDetails.trueTone : true,
+          minus: tradeInDetails.minus || '',
           createdAt: new Date().toISOString(),
           // Data penjual untuk audit hukum
           sellerName: tradeInDetails.sellerName,

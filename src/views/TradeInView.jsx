@@ -26,8 +26,7 @@ export const TradeInView = () => {
   const [oldBatteryHealth, setOldBatteryHealth] = useState('80');
   const [oldGaransiAsal, setOldGaransiAsal] = useState('Inter');
   const [oldGradeFisik, setOldGradeFisik] = useState('B');
-  const [oldFaceId, setOldFaceId] = useState(true);
-  const [oldTrueTone, setOldTrueTone] = useState(true);
+  const [oldMinus, setOldMinus] = useState('');
   const [taksiranHarga, setTaksiranHarga] = useState('');
 
   // Seller Info (Legal Log)
@@ -125,8 +124,7 @@ export const TradeInView = () => {
       batteryHealth: isApple ? parseInt(oldBatteryHealth) : null,
       garansiAsal: oldGaransiAsal,
       gradeFisik: oldGradeFisik,
-      faceId: oldFaceId,
-      trueTone: oldTrueTone,
+      minus: oldMinus,
       // Seller info
       sellerName,
       sellerKtp,
@@ -175,6 +173,7 @@ export const TradeInView = () => {
       setSellerPhone('');
       setKtpPreview(null);
       setSelectedSales('');
+      setOldMinus('');
     }
   };
 
@@ -341,31 +340,15 @@ export const TradeInView = () => {
               </div>
 
               {isApple && (
-                <div className="grid grid-cols-2 gap-3 mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 rounded-xl p-2.5 shadow-sm dark:shadow-none">
-                  <div className="flex flex-col gap-1 text-left">
-                    <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">FaceID / TouchID</label>
-                    <select
-                      value={oldFaceId}
-                      onChange={(e) => setOldFaceId(e.target.value === 'true')}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold focus:bg-white dark:focus:bg-slate-800 outline-none"
-                    >
-                      <option value="true">Normal (ON)</option>
-                      <option value="false">Mati (OFF)</option>
-                    </select>
-                  </div>
-                  
-                  <div className="flex flex-col gap-1 text-left">
-                    <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">TrueTone</label>
-                    <select
-                      value={oldTrueTone}
-                      onChange={(e) => setOldTrueTone(e.target.value === 'true')}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-bold focus:bg-white dark:focus:bg-slate-800 outline-none"
-                    >
-                      <option value="true">Normal (ON)</option>
-                      <option value="false">Mati (OFF)</option>
-                    </select>
-                  </div>
-                </div>
+              <div className="col-span-3 mt-1">
+                <Input
+                  label="Catatan Minus / Kerusakan HP Lama"
+                  placeholder="Contoh: TrueTone Off, Layar shadow tipis, FaceID Off (kosongkan jika mulus)"
+                  value={oldMinus}
+                  onChange={(e) => setOldMinus(e.target.value)}
+                  className="!rounded-xl"
+                />
+              </div>
               )}
             </div>
           </Card>

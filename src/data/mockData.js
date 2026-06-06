@@ -67,8 +67,7 @@ export const initialInventory = [
     garansiAsal: 'iBox',
     garansiAktif: false,
     gradeFisik: 'A',
-    faceId: true,
-    trueTone: true,
+    minus: 'Tidak ada minus (Mulus)',
     createdAt: '2026-05-20T14:30:00Z'
   },
   {
@@ -90,8 +89,7 @@ export const initialInventory = [
     garansiAsal: 'Inter',
     garansiAktif: false,
     gradeFisik: 'B',
-    faceId: false, // FaceID rusak/off
-    trueTone: true,
+    minus: 'FaceID Rusak/Off',
     createdAt: '2026-05-22T09:15:00Z'
   },
   

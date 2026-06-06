@@ -49,8 +49,7 @@ export const InventoryView = () => {
     garansiAsal: 'iBox', // 'iBox' / 'Inter'
     garansiAktif: false, // true / false
     gradeFisik: 'A', // 'A' / 'B' / 'C'
-    faceId: true, // true / false
-    trueTone: true // true / false
+    minus: '' // Catatan minus/kerusakan manual
   });
 
   // Barcode Printing State
@@ -96,8 +95,7 @@ export const InventoryView = () => {
       garansiAsal: 'iBox',
       garansiAktif: false,
       gradeFisik: 'A',
-      faceId: true,
-      trueTone: true
+      minus: ''
     });
     setIsEditing(false);
     setShowFormModal(true);
@@ -114,8 +112,7 @@ export const InventoryView = () => {
       garansiAsal: product.garansiAsal || 'iBox',
       garansiAktif: product.garansiAktif || false,
       gradeFisik: product.gradeFisik || 'A',
-      faceId: product.faceId !== undefined ? product.faceId : true,
-      trueTone: product.trueTone !== undefined ? product.trueTone : true
+      minus: product.minus || ''
     });
     setIsEditing(true);
     setShowFormModal(true);
@@ -149,8 +146,7 @@ export const InventoryView = () => {
       garansiAsal: formData.kondisi === 'Bekas' ? formData.garansiAsal : null,
       garansiAktif: formData.kondisi === 'Bekas' ? (formData.garansiAktif === 'true' || formData.garansiAktif === true) : null,
       gradeFisik: formData.kondisi === 'Bekas' ? formData.gradeFisik : null,
-      faceId: formData.kondisi === 'Bekas' ? (formData.faceId === 'true' || formData.faceId === true) : null,
-      trueTone: formData.kondisi === 'Bekas' ? (formData.trueTone === 'true' || formData.trueTone === true) : null
+      minus: formData.kondisi === 'Bekas' ? formData.minus : null
     };
 
     if (isEditing) {
@@ -281,17 +277,12 @@ export const InventoryView = () => {
                   {handleFormatRupiah(product.hargaJual)}
                 </td>
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-[10px] max-w-[200px]">
-                  {isAppleBekas ? (
+                  {product.kondisi === 'Bekas' ? (
                     <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-400">
-                      <div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>
-                      <div>Garansi: <span className="font-bold text-slate-800 dark:text-slate-200">{product.garansiAsal} ({product.garansiAktif ? 'Aktif' : 'Habis'})</span></div>
-                      <div>Fisik Grade: <span className="font-bold text-slate-800 dark:text-slate-200">{product.gradeFisik}</span></div>
-                      <div>Fitur: <span className="font-bold text-slate-800 dark:text-slate-200">FID: {product.faceId ? 'On' : 'Off'} | TT: {product.trueTone ? 'On' : 'Off'}</span></div>
-                    </div>
-                  ) : product.kondisi === 'Bekas' ? (
-                    <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-400">
-                      <div>Garansi: <span className="font-bold text-slate-800 dark:text-slate-200">{product.garansiAsal || '-'}</span></div>
+                      {product.brand.toLowerCase() === 'apple' && <div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>}
+                      <div>Garansi: <span className="font-bold text-slate-800 dark:text-slate-200">{product.garansiAsal || '-'} ({product.garansiAktif ? 'Aktif' : 'Habis'})</span></div>
                       <div>Fisik Grade: <span className="font-bold text-slate-800 dark:text-slate-200">{product.gradeFisik || '-'}</span></div>
+                      <div>Minus: <span className="font-bold text-red-600 dark:text-red-400">{product.minus || 'Mulus (No Minus)'}</span></div>
                     </div>
                   ) : (
                     <span className="text-slate-400 dark:text-slate-500 italic">Tidak ada atribut khusus</span>
@@ -507,33 +498,15 @@ export const InventoryView = () => {
                 )}
               </div>
 
-              {formData.brand.toLowerCase() === 'apple' && (
-                <div className="grid grid-cols-2 gap-3 mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/40 rounded-xl p-2.5">
-                  <div className="flex flex-col gap-1 text-left">
-                    <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">FaceID / TouchID</label>
-                    <select
-                      value={formData.faceId}
-                      onChange={(e) => setFormData({ ...formData, faceId: e.target.value })}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 outline-none font-bold"
-                    >
-                      <option value={true}>Berfungsi (ON)</option>
-                      <option value={false}>Rusak (OFF)</option>
-                    </select>
-                  </div>
-                  
-                  <div className="flex flex-col gap-1 text-left">
-                    <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">TrueTone Screen</label>
-                    <select
-                      value={formData.trueTone}
-                      onChange={(e) => setFormData({ ...formData, trueTone: e.target.value })}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 outline-none font-bold"
-                    >
-                      <option value={true}>Berfungsi (ON)</option>
-                      <option value={false}>Mati (OFF)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+              <div className="mt-2.5">
+                <Input
+                  label="Catatan Minus / Kerusakan Staf"
+                  placeholder="Contoh: TrueTone Off, Layar gores tipis, FaceID Off (kosongkan jika mulus)"
+                  value={formData.minus}
+                  onChange={(e) => setFormData({ ...formData, minus: e.target.value })}
+                  className="!rounded-xl"
+                />
+              </div>
             </div>
           )}
 
