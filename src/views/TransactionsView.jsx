@@ -79,13 +79,13 @@ export const TransactionsView = () => {
         headerBg="bg-orange-100/70"
         bodyClassName="p-4 flex flex-col gap-4"
         headerAction={
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full overflow-x-auto scrollbar-none pb-0.5">
             {['Semua', 'Tunai', 'QRIS', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
               <button
                 key={method}
                 onClick={() => setSelectedMethod(method)}
                 className={`
-                  px-3 py-1.5 rounded-xl font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer border border-transparent
+                  px-3 py-1.5 rounded-xl font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer border border-transparent shrink-0
                   ${selectedMethod === method 
                     ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 shadow-sm' 
                     : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'

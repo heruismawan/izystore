@@ -16,12 +16,12 @@ export const Card = ({
       {...props}
     >
       {(title || subtitle || headerAction) && (
-        <div className={`px-6 py-4 border-b border-slate-100 dark:border-slate-800/40 flex justify-between items-center ${headerBg} dark:bg-slate-900/50`}>
+        <div className={`px-6 py-4 border-b border-slate-100 dark:border-slate-800/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 ${headerBg} dark:bg-slate-900/50`}>
           <div className="text-left">
             {title && <h3 className="font-extrabold text-xs uppercase tracking-widest text-slate-700 dark:text-slate-200">{title}</h3>}
             {subtitle && <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
-          {headerAction && <div className="flex items-center">{headerAction}</div>}
+          {headerAction && <div className="flex items-center w-full md:w-auto overflow-x-auto scrollbar-none">{headerAction}</div>}
         </div>
       )}
       <div className={`flex-1 ${bodyClassName}`}>
