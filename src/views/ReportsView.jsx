@@ -104,7 +104,7 @@ export const ReportsView = () => {
       </div>
 
       {/* DASHBOARD STATS ROW */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card title="TOTAL OMSET (REVENUE)" headerBg="bg-orange-100/70" bodyClassName="p-4">
           <div className="text-2xl font-black text-slate-800 dark:text-slate-100">
             {handleFormatRupiah(totalRevenue - totalDiscount)}
@@ -123,15 +123,6 @@ export const ReportsView = () => {
           </span>
         </Card>
 
-        <Card title="KEUNTUNGAN BERSIH" headerBg="bg-emerald-100/70" bodyClassName="p-4">
-          <div className="text-2xl font-black text-emerald-800 dark:text-emerald-450 bg-emerald-100/70 dark:bg-emerald-950/40 px-2.5 py-0.5 border border-white/50 dark:border-emerald-900/30 rounded-lg inline-block shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]">
-            {handleFormatRupiah(totalProfitBersih)}
-          </div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 block">
-            Profit kotor: {handleFormatRupiah(totalProfitKotor)}
-          </span>
-        </Card>
-
         <Card title="VOLUME TRANSAKSI" headerBg="bg-purple-100/70" bodyClassName="p-4">
           <div className="text-2xl font-black text-slate-800 dark:text-slate-100">
             {totalTransactions} Transaksi
@@ -147,7 +138,7 @@ export const ReportsView = () => {
         
         {/* Margin breakdown cards (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          <Card title="Perbandingan Margin Kategori" headerBg="bg-orange-100/70" bodyClassName="p-5 flex flex-col gap-5">
+          <Card title="Total Penjualan Per Kategori" headerBg="bg-orange-100/70" bodyClassName="p-5 flex flex-col gap-5">
             
             {/* Category: Gadgets */}
             <div className="border border-slate-100 dark:border-slate-800/40 bg-slate-50/70 dark:bg-slate-950/20 rounded-2xl p-4 flex flex-col gap-2 relative shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)] text-slate-600 dark:text-slate-400">
@@ -157,22 +148,19 @@ export const ReportsView = () => {
                   Kategori Gadget / HP
                 </span>
                 <span className="bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-white/50 dark:border-purple-900/30 px-2.5 py-0.5 rounded-lg text-[9px] shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] font-black uppercase">
-                  Margin: {gadgetMargin.toFixed(1)}%
+                  Porsi: {((gadgetRevenue / (totalRevenue || 1)) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/40 h-3 mt-1 rounded-full overflow-hidden">
                 <div 
                   className="bg-purple-400 h-full rounded-full transition-all duration-300 shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.4)]" 
-                  style={{ width: `${Math.min(100, gadgetMargin)}%` }}
+                  style={{ width: `${Math.min(100, (gadgetRevenue / (totalRevenue || 1)) * 100)}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-450 mt-1">
-                <span>Omset: {handleFormatRupiah(gadgetRevenue)}</span>
-                <span>Profit: {handleFormatRupiah(gadgetProfit)}</span>
+              <div className="flex justify-between items-center text-[11px] font-extrabold text-slate-700 dark:text-slate-250 mt-1">
+                <span>Omset Terjual:</span>
+                <span className="font-mono text-sm">{handleFormatRupiah(gadgetRevenue)}</span>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-normal mt-2 border-t border-dashed border-slate-200 dark:border-slate-800/40 pt-1.5">
-                *Analisis: Margin tipis (~10-15%) karena modal tinggi, namun volume uang besar.
-              </p>
             </div>
 
             {/* Category: Accessories */}
@@ -182,23 +170,20 @@ export const ReportsView = () => {
                   <ShoppingBag size={16} />
                   Kategori Aksesoris
                 </span>
-                <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-white/50 dark:border-emerald-900/30 px-2.5 py-0.5 rounded-lg text-[9px] shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] font-black uppercase">
-                  Margin: {accMargin.toFixed(1)}%
+                <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-450 border border-white/50 dark:border-emerald-900/30 px-2.5 py-0.5 rounded-lg text-[9px] shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)] font-black uppercase">
+                  Porsi: {((accRevenue / (totalRevenue || 1)) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/40 h-3 mt-1 rounded-full overflow-hidden">
                 <div 
                   className="bg-emerald-400 h-full rounded-full transition-all duration-300 shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.4)]" 
-                  style={{ width: `${Math.min(100, accMargin)}%` }}
+                  style={{ width: `${Math.min(100, (accRevenue / (totalRevenue || 1)) * 100)}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-450 mt-1">
-                <span>Omset: {handleFormatRupiah(accRevenue)}</span>
-                <span>Profit: {handleFormatRupiah(accProfit)}</span>
+              <div className="flex justify-between items-center text-[11px] font-extrabold text-slate-700 dark:text-slate-250 mt-1">
+                <span>Omset Terjual:</span>
+                <span className="font-mono text-sm">{handleFormatRupiah(accRevenue)}</span>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-normal mt-2 border-t border-dashed border-slate-200 dark:border-slate-800/40 pt-1.5">
-                *Analisis: Margin tebal (50-100%), modal relatif rendah. Penting untuk cross-selling aksesoris saat jual HP!
-              </p>
             </div>
 
           </Card>
@@ -206,13 +191,12 @@ export const ReportsView = () => {
 
         {/* Sales commission tracker table (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-6">
-          <Card title="Akumulasi Komisi Sales Karyawan" headerBg="bg-emerald-100/70" bodyClassName="p-4">
+          <Card title="Performa Penjualan Sales Karyawan" headerBg="bg-emerald-100/70" bodyClassName="p-4">
             <Table
-              headers={['Nama Salesperson', 'Jumlah Transaksi', 'Total Omset Sales', 'Akumulasi Profit', 'Bonus Komisi (1%)']}
+              headers={['Nama Salesperson', 'Jumlah Transaksi', 'Total Omset Sales']}
               rows={salespersons}
               renderRow={(sales) => {
-                const stats = salesStats[sales.name] || { transactionsCount: 0, totalSalesRevenue: 0, totalSalesProfit: 0, commissionRate: 0.01 };
-                const calculatedCommission = stats.totalSalesProfit * stats.commissionRate;
+                const stats = salesStats[sales.name] || { transactionsCount: 0, totalSalesRevenue: 0 };
                 
                 return (
                   <tr key={sales.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
@@ -226,19 +210,10 @@ export const ReportsView = () => {
                     <td className="px-3 py-3 font-mono text-slate-700 dark:text-slate-300">
                       {handleFormatRupiah(stats.totalSalesRevenue)}
                     </td>
-                    <td className="px-3 py-3 font-mono text-slate-500 dark:text-slate-400">
-                      {handleFormatRupiah(stats.totalSalesProfit)}
-                    </td>
-                    <td className="px-3 py-3 font-extrabold font-mono text-emerald-700 dark:text-emerald-450 bg-emerald-50/40 dark:bg-emerald-950/20">
-                      {handleFormatRupiah(calculatedCommission)}
-                    </td>
                   </tr>
                 );
               }}
             />
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-normal mt-3 px-1">
-              *Catatan Bonus: Komisi dihitung 1% dari total **profit** (bukan omset) produk yang berhasil dilayani sales tersebut, memotivasi sales untuk menjual barang bermargin tinggi.
-            </p>
           </Card>
         </div>
       </div>

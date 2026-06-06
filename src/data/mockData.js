@@ -150,7 +150,7 @@ export const initialTransactions = [
     paymentMethod: 'QRIS',
     cashAmount: 19648000,
     changeAmount: 0,
-    type: 'Penjual'
+    type: 'Penjualan'
   },
   {
     id: 't2',
@@ -165,7 +165,7 @@ export const initialTransactions = [
     paymentMethod: 'Tunai',
     cashAmount: 400000,
     changeAmount: 2000,
-    type: 'Penjual'
+    type: 'Penjualan'
   }
 ];
 

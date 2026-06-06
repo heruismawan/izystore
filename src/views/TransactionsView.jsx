@@ -9,11 +9,12 @@ import logoImg from '../assets/logo.png';
 import { Search, Eye, FileText, Printer, Share2 } from 'lucide-react';
 
 export const TransactionsView = () => {
-  const { transactions, currentUser } = useApp();
+  const { transactions, salespersons, currentUser } = useApp();
   
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('Semua');
+  const [selectedSalesperson, setSelectedSalesperson] = useState('Semua');
 
   // Detail Modal state
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -44,7 +45,11 @@ export const TransactionsView = () => {
       selectedMethod === 'Semua' || 
       tx.paymentMethod === selectedMethod;
 
-    return matchesSearch && matchesMethod;
+    const matchesSalesperson = 
+      selectedSalesperson === 'Semua' || 
+      tx.salesperson === selectedSalesperson;
+
+    return matchesSearch && matchesMethod && matchesSalesperson;
   });
 
   const handleOpenDetail = (tx) => {
@@ -93,14 +98,31 @@ export const TransactionsView = () => {
           </div>
         }
       >
-        {/* Search Input */}
-        <div className="w-full max-w-sm mb-2">
-          <Input
-            placeholder="Cari No Invoice, Sales, Produk, IMEI..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            icon={Search}
-          />
+        {/* Filter Bar */}
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between mb-2">
+          <div className="w-full md:max-w-sm">
+            <Input
+              placeholder="Cari No Invoice, Sales, Produk, IMEI..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              icon={Search}
+            />
+          </div>
+          
+          <div className="w-full md:w-auto flex items-center gap-2">
+            <span className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">Filter Sales:</span>
+            <select
+              value={selectedSalesperson}
+              onChange={(e) => setSelectedSalesperson(e.target.value)}
+              className="border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+            >
+              <option value="Semua">Semua Sales</option>
+              {salespersons.map((s) => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+              <option value="Tanpa Sales">Tanpa Sales</option>
+            </select>
+          </div>
         </div>
 
         {/* Transactions Table */}

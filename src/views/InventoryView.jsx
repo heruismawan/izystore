@@ -138,7 +138,9 @@ export const InventoryView = () => {
 
     const itemPayload = {
       ...formData,
-      hargaBeli: parseFloat(formData.hargaBeli) || 0,
+      hargaBeli: isEditing
+        ? (inventory.find(item => item.id === formData.id)?.hargaBeli || 0)
+        : 0,
       hargaJual: parseFloat(formData.hargaJual) || 0,
       stok: parseInt(formData.stok) || 1,
       // Bekas specifications
@@ -234,16 +236,7 @@ export const InventoryView = () => {
 
         {/* Table inventory list */}
         <Table
-          headers={[
-            'SKU / IMEI',
-            'Produk',
-            'Kondisi',
-            'Stok',
-            'Harga Beli',
-            'Harga Jual',
-            'Atribut Tambahan',
-            'Aksi'
-          ]}
+          headers={['SKU / IMEI', 'Produk', 'Kondisi', 'Stok', 'Harga Jual', 'Atribut Tambahan', 'Aksi']}
           rows={filteredInventory}
           renderRow={(product, index) => {
             const isAppleBekas = product.kondisi === 'Bekas' && product.brand.toLowerCase() === 'apple';
@@ -270,9 +263,7 @@ export const InventoryView = () => {
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-center font-bold text-sm text-slate-800 dark:text-slate-100">
                   {product.stok}
                 </td>
-                <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-slate-500 dark:text-slate-400 font-mono">
-                  {handleFormatRupiah(product.hargaBeli)}
-                </td>
+
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 font-extrabold font-mono text-sm text-slate-800 dark:text-slate-100">
                   {handleFormatRupiah(product.hargaJual)}
                 </td>
@@ -412,15 +403,7 @@ export const InventoryView = () => {
             />
           )}
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Harga Beli (Rp)"
-              type="number"
-              placeholder="Harga pokok"
-              value={formData.hargaBeli}
-              onChange={(e) => setFormData({ ...formData, hargaBeli: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
             <Input
               label="Harga Jual (Rp)"
               type="number"

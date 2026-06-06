@@ -9,13 +9,13 @@ import WarrantyView from './views/WarrantyView';
 import ReportsView from './views/ReportsView';
 import UserManagementView from './views/UserManagementView';
 import LoginView from './views/LoginView';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import logoImg from './assets/logo.png';
 
 function AppContent() {
   const [activeView, setActiveView] = useState('pos');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { theme, currentUser } = useApp();
+  const { theme, currentUser, setCurrentUser } = useApp();
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -63,12 +63,29 @@ function AppContent() {
             izy store
           </h1>
         </div>
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200/40 dark:border-slate-700/50 shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
-        >
-          <Menu size={16} strokeWidth={2.5} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Quick Ganti Akun button for mobile */}
+          <button
+            onClick={() => {
+              if (window.confirm('Apakah Anda yakin ingin keluar dan ganti akun?')) {
+                setCurrentUser(null);
+                setActiveView('pos');
+              }
+            }}
+            className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100/50 dark:border-red-900/30 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer font-extrabold uppercase text-[9px] tracking-wider"
+            title="Keluar / Ganti Akun"
+          >
+            <LogOut size={12} strokeWidth={2.5} />
+            <span>Ganti Akun</span>
+          </button>
+          
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200/40 dark:border-slate-700/50 shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
+          >
+            <Menu size={16} strokeWidth={2.5} />
+          </button>
+        </div>
       </header>
 
       {/* Responsive Sidebar Panel: Desktop Sidebar / Mobile slide-out overlay drawer */}
