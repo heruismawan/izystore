@@ -79,3 +79,8 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Prevent double-tap-to-zoom on buttons and interactive elements for native feel */
+button, input, select, textarea, a {
+  touch-action: manipulation;
+}
+

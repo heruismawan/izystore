@@ -113,7 +113,7 @@ export const LoginView = () => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/20 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Glassmorphism POS Container */}
-      <div className="w-full max-w-md p-8 bg-white/80 dark:bg-slate-900/80 border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark-lg backdrop-blur-xl rounded-3xl relative z-10 flex flex-col justify-between min-h-[580px] transition-all duration-300">
+      <div className="w-full max-w-md p-8 bg-white/80 dark:bg-slate-900/80 border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark-lg backdrop-blur-xl rounded-3xl relative z-10 flex flex-col justify-between min-h-[580px] transition-all duration-300 select-none">
         
         {/* Header Action: Theme toggle */}
         <div className="flex justify-between items-center select-none mb-2">
