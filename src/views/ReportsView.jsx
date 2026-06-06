@@ -95,11 +95,8 @@ export const ReportsView = () => {
         <div>
           <h2 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 m-0 flex items-center gap-2">
             <TrendingUp size={22} className="text-rose-500 dark:text-rose-450" />
-            Laporan Keuangan & Margin Keuntungan (Admin/Owner Only)
+            Laporan Keuangan
           </h2>
-          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
-            Pantau omset penjualan, perbandingan margin profit gadget vs aksesoris, dan akumulasi bonus komisi sales.
-          </p>
         </div>
       </div>
 
