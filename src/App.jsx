@@ -56,7 +56,7 @@ function AppContent() {
     <div className="flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 min-h-screen font-sans antialiased text-slate-700 dark:text-slate-200 select-none overflow-hidden transition-colors duration-300">
       
       {/* Mobile Top Bar Header */}
-      <header className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/40 p-4 flex justify-between items-center z-35 sticky top-0 transition-colors duration-300 shrink-0">
+      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/40 px-4 flex justify-between items-center z-35 transition-colors duration-300">
         <div className="flex items-center gap-2">
           <img src={logoImg} alt="Izy Store Logo" className="w-8 h-8 object-contain rounded-full border border-orange-100/50" />
           <h1 className="text-base font-black tracking-wide text-orange-700 dark:text-orange-400 m-0">
@@ -87,6 +87,9 @@ function AppContent() {
           </button>
         </div>
       </header>
+
+      {/* Spacer to push content below the fixed header on mobile */}
+      <div className="h-16 md:hidden shrink-0" />
 
       {/* Responsive Sidebar Panel: Desktop Sidebar / Mobile slide-out overlay drawer */}
       <div className={`
@@ -119,7 +122,7 @@ function AppContent() {
       </div>
 
       {/* Floating Main Content Area */}
-      <main className="flex-1 h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] overflow-y-auto p-4 md:p-6 bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark-lg m-2 md:m-4 md:ml-2 transition-all duration-300">
+      <main className="flex-1 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-2rem)] overflow-y-auto p-4 md:p-6 bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark-lg m-2 md:m-4 md:ml-2 transition-all duration-300">
         <div className="mx-auto max-w-7xl h-full">
           {renderView()}
         </div>
