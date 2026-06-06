@@ -425,7 +425,7 @@ export const InventoryView = () => {
 
           {/* DYNAMIC SPECS FOR APPLE BEKAS / SECOND HP */}
           {formData.kondisi === 'Bekas' && (
-            <div className="border border-slate-100 dark:border-slate-800/40 rounded-2xl bg-slate-50/70 dark:bg-slate-950/40 p-4.5 flex flex-col gap-3">
+            <div className="border border-slate-100 dark:border-slate-800/40 rounded-2xl bg-slate-50/70 dark:bg-slate-950/40 p-5 flex flex-col gap-3">
               <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block border-b border-slate-100 dark:border-slate-800/40 pb-1.5">
                 Spesifikasi Kondisi Bekas {formData.brand.toLowerCase() === 'apple' ? '(iPhone Spec)' : ''}
               </span>

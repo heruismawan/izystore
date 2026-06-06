@@ -17,7 +17,14 @@ import {
   Share2, 
   Lock, 
   DollarSign,
-  ShoppingBag 
+  ShoppingBag,
+  Smartphone,
+  Cpu,
+  Layers,
+  Award,
+  Battery,
+  Shield,
+  Tag
 } from 'lucide-react';
 
 export const POSView = () => {
@@ -234,7 +241,7 @@ export const POSView = () => {
       </div>
 
       {/* Main Responsive POS Layout Container */}
-      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 h-[calc(100vh-8.5rem)] md:h-[calc(100vh-5rem)] overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 h-[calc(100dvh-8.5rem)] md:h-[calc(100dvh-5rem)] overflow-hidden">
         
         {/* LEFT PANEL: PRODUCT SEARCH & GRID */}
         <div className={`flex flex-col gap-4 h-full md:w-[60%] ${activeMobileTab === 'produk' ? 'w-full flex' : 'hidden md:flex'}`}>
@@ -276,59 +283,147 @@ export const POSView = () => {
           </div>
 
           {/* Grid Products */}
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto px-2.5 py-2 -mx-2.5">
             <div className="grid grid-cols-2 gap-3.5 pb-4">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <div
                     key={product.id}
                     onClick={() => handleAddToCart(product)}
-                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-4 text-left flex flex-col justify-between hover:scale-[1.02] active:scale-[0.98] cursor-pointer transition-all duration-200"
+                    className="relative group bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950/90 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 p-5 text-left flex flex-col justify-between hover:scale-[1.03] active:scale-[0.98] cursor-pointer transition-all duration-300 overflow-hidden shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] hover:shadow-[0_12px_30px_-5px_rgba(249,115,22,0.12)] dark:hover:shadow-[0_12px_30px_-5px_rgba(249,115,22,0.15)] hover:border-orange-300 dark:hover:border-orange-500/30"
                   >
-                    <div>
-                      <div className="flex justify-between items-start gap-1">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                          {product.brand}
-                        </span>
-                        <span className={`
-                          text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-lg border border-white/50 dark:border-slate-800/30
-                          ${product.kondisi === 'Baru' 
-                            ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)]' 
-                            : 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)]'
-                          }
-                        `}>
-                          {product.kondisi}
-                        </span>
-                      </div>
-                      <h4 className="font-extrabold text-xs text-slate-800 dark:text-slate-200 mt-1 line-clamp-2">
-                        {product.model}
-                      </h4>
-                      <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
-                        {product.kategori === 'Gadget' ? `${product.ram}/${product.rom} • ${product.warna}` : product.warna || 'Aksesoris'}
-                      </p>
-                      {product.kategori === 'Gadget' && (
-                        <p className="text-[8px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800/40 rounded-lg inline-block px-2 py-0.5 mt-1 font-mono truncate max-w-full">
-                          IMEI: {product.imei}
-                        </p>
-                      )}
-                      
-                      {/* Kondisi Bekas Tag Details */}
-                      {product.kondisi === 'Bekas' && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          <span className="text-[8px] bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-md">BH: {product.batteryHealth}%</span>
-                          <span className="text-[8px] bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded-md">Grade: {product.gradeFisik}</span>
-                          <span className="text-[8px] bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-400 font-bold px-1.5 py-0.5 rounded-md">{product.garansiAsal}</span>
-                        </div>
+                    {/* Animated border shine/glow */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 via-transparent to-orange-500/0 dark:from-orange-500/10 dark:to-orange-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    {/* Giant Backdrop Watermark */}
+                    <div className="absolute -right-6 -bottom-6 w-32 h-32 text-slate-100/45 dark:text-slate-800/15 group-hover:text-orange-500/5 dark:group-hover:text-orange-400/5 group-hover:scale-110 transition-all duration-500 pointer-events-none z-0">
+                      {product.kategori === 'Gadget' ? (
+                        <Smartphone size="100%" strokeWidth={0.5} />
+                      ) : (
+                        <ShoppingBag size="100%" strokeWidth={0.5} />
                       )}
                     </div>
-                    
-                    <div className="mt-4 pt-2.5 border-t border-dashed border-slate-100 dark:border-slate-800/40 flex justify-between items-center">
-                      <span className="font-black text-xs text-slate-800 dark:text-slate-100">
-                        {handleFormatRupiah(product.hargaJual)}
-                      </span>
-                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-                        Stok: {product.stok}
-                      </span>
+
+                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Top Row: Icon / Category and Condition Badge */}
+                        <div className="flex justify-between items-center mb-3.5">
+                          {/* Premium Category Icon */}
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:rotate-6 group-hover:scale-105 border ${
+                            product.kategori === 'Gadget' 
+                              ? 'bg-gradient-to-br from-orange-50 to-orange-100/60 dark:from-orange-950/40 dark:to-orange-950/20 text-orange-500 dark:text-orange-400 border-orange-200/50 dark:border-orange-900/30 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.8)] dark:shadow-none' 
+                              : 'bg-gradient-to-br from-emerald-50 to-emerald-100/60 dark:from-emerald-950/40 dark:to-emerald-950/20 text-emerald-500 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/30 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.8)] dark:shadow-none'
+                          }`}>
+                            {product.kategori === 'Gadget' ? (
+                              <Smartphone size={18} strokeWidth={2.5} />
+                            ) : (
+                              <ShoppingBag size={18} strokeWidth={2.5} />
+                            )}
+                          </div>
+
+                          {/* Condition Badge */}
+                          <span className={`
+                            text-[8px] font-black uppercase px-2.5 py-1 rounded-full shadow-sm text-white tracking-widest border border-white/20
+                            ${product.kondisi === 'Baru' 
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/10' 
+                              : 'bg-gradient-to-r from-purple-550 to-indigo-500 shadow-purple-500/10'
+                            }
+                          `}>
+                            {product.kondisi}
+                          </span>
+                        </div>
+
+                        {/* Brand & Model */}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Tag size={8} className="text-slate-400 dark:text-slate-500" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                              {product.brand}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-sm text-slate-850 dark:text-slate-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-1 leading-tight mb-1">
+                            {product.model}
+                          </h4>
+                        </div>
+
+                        {/* Specs Pills */}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {product.kategori === 'Gadget' ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-[8px] font-bold bg-slate-100/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg border border-slate-200/20 dark:border-slate-700/30">
+                                <Cpu size={8} />
+                                <span>{product.ram}/{product.rom}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[8px] font-bold bg-slate-100/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg border border-slate-200/20 dark:border-slate-700/30">
+                                <Layers size={8} />
+                                <span>{product.warna}</span>
+                              </span>
+                            </>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[8px] font-bold bg-slate-100/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg border border-slate-200/20 dark:border-slate-700/30">
+                              <Layers size={8} />
+                              <span>{product.warna || 'Aksesoris'}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Condition Specific Badges (Bekas) */}
+                        {product.kondisi === 'Bekas' && (
+                          <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-slate-100/40 dark:border-slate-800/40">
+                            {product.brand.toLowerCase() === 'apple' && (
+                              <span className="inline-flex items-center gap-1 text-[8px] bg-amber-50 dark:bg-amber-950/30 border border-amber-200/30 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-extrabold px-2 py-0.5 rounded-lg">
+                                <Battery size={8} className="text-amber-500" />
+                                <span>BH {product.batteryHealth}%</span>
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1 text-[8px] bg-blue-50 dark:bg-blue-950/30 border border-blue-200/30 dark:border-blue-900/30 text-blue-700 dark:text-blue-400 font-extrabold px-2 py-0.5 rounded-lg">
+                              <Award size={8} className="text-blue-500" />
+                              <span>Grade {product.gradeFisik}</span>
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[8px] bg-rose-50 dark:bg-rose-950/30 border border-rose-200/30 dark:border-rose-900/30 text-rose-700 dark:text-rose-450 font-extrabold px-2 py-0.5 rounded-lg">
+                              <Shield size={8} className="text-rose-500" />
+                              <span>{product.garansiAsal}</span>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* IMEI Details */}
+                        {product.kategori === 'Gadget' && (
+                          <div className="mt-2.5">
+                            <span className="text-[8px] font-bold font-mono text-slate-400 dark:text-slate-500 bg-slate-100/60 dark:bg-slate-950/50 border border-slate-200/30 dark:border-slate-800/40 rounded-lg px-2 py-1 inline-block truncate max-w-full">
+                              IMEI: {product.imei}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Footer: Price and Add Button */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/40 flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Harga Jual</span>
+                          <span className="font-black text-sm text-orange-600 dark:text-orange-400 font-mono tracking-tight">
+                            {handleFormatRupiah(product.hargaJual)}
+                          </span>
+                        </div>
+
+                        {/* Actions wrapper */}
+                        <div className="flex items-center gap-2">
+                          {/* Stock Pill */}
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-950/80 border border-slate-200/40 dark:border-slate-800/40">
+                            <span className={`w-1 h-1 rounded-full ${
+                              product.stok <= 2 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
+                            }`} />
+                            <span className="text-[8px] font-extrabold text-slate-500 dark:text-slate-400">
+                              {product.stok} unit
+                            </span>
+                          </div>
+
+                          {/* Plus Add Button */}
+                          <div className="w-8 h-8 rounded-2xl bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 group-hover:text-white dark:group-hover:text-slate-950 flex items-center justify-center shadow-neo dark:shadow-none transition-all duration-300 group-hover:scale-110">
+                            <Plus size={14} strokeWidth={3} className="transition-transform duration-300 group-hover:rotate-90" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -634,7 +729,7 @@ export const POSView = () => {
         maxWidth="max-w-md"
       >
         <div className="flex flex-col gap-4 text-left">
-          <div className="bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-2xl border border-white/50 dark:border-orange-900/30 shadow-[inset_0_3px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)] p-4.5 text-center mb-1">
+          <div className="bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-2xl border border-white/50 dark:border-orange-900/30 shadow-[inset_0_3px_5px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)] p-5 text-center mb-1">
             <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400 block">TOTAL TAGIHAN</span>
             <span className="text-2xl font-black">{handleFormatRupiah(total)}</span>
           </div>
