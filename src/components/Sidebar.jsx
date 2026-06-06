@@ -73,7 +73,7 @@ export const Sidebar = ({ activeView, setActiveView }) => {
 
 
   return (
-    <div className="w-64 bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark h-[calc(100vh-2rem)] m-4 flex flex-col justify-between overflow-hidden sticky top-4 transition-all duration-300">
+    <div className="w-64 bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark h-[calc(100dvh-2rem)] m-4 flex flex-col justify-between overflow-y-auto scrollbar-none sticky top-4 transition-all duration-300">
       {/* Sidebar Top: Logo / Brand & Dark Mode Toggle */}
       <div>
         <div className="p-4 bg-orange-100/30 dark:bg-orange-950/10 border-b border-slate-100 dark:border-slate-800/40 text-left flex justify-between items-center gap-2">
