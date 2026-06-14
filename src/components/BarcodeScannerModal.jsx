@@ -9,6 +9,7 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   const [isInitializing, setIsInitializing] = useState(false);
   const html5QrCodeRef = useRef(null);
   const isMountedRef = useRef(true);
+  const isInitializingRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -25,18 +26,41 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
     let html5QrCode = null;
 
     const startScanner = async () => {
-      // Small timeout to guarantee DOM is rendered
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      
-      if (!isMountedRef.current || !isOpen) return;
+      // Lock to prevent concurrent initialization in React StrictMode double effect run
+      if (isInitializingRef.current) return;
+      isInitializingRef.current = true;
 
+      // Wait for element to be present in DOM (polling up to 15 times)
       const elementId = 'barcode-scanner-reader';
-      const element = document.getElementById(elementId);
+      let element = null;
+      for (let i = 0; i < 15; i++) {
+        element = document.getElementById(elementId);
+        if (element) break;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+
+      if (!isMountedRef.current || !isOpen) {
+        isInitializingRef.current = false;
+        return;
+      }
+
       if (!element) {
-        if (isMountedRef.current) {
-          setErrorMsg('Elemen scanner tidak ditemukan.');
-          setIsInitializing(false);
-        }
+        setErrorMsg('Elemen kontainer scanner tidak ditemukan di DOM.');
+        setIsInitializing(false);
+        isInitializingRef.current = false;
+        return;
+      }
+
+      // Check for secure context. Mobile browsers block camera access on non-secure HTTP (except localhost/127.0.0.1)
+      const isSecure = window.isSecureContext || 
+                       window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+      if (!isSecure) {
+        setErrorMsg(
+          'Kamera diblokir karena koneksi tidak aman (HTTP). Silakan gunakan koneksi HTTPS atau akses dari localhost komputer Anda.'
+        );
+        setIsInitializing(false);
+        isInitializingRef.current = false;
         return;
       }
 
@@ -45,13 +69,8 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         html5QrCodeRef.current = html5QrCode;
 
         const config = {
-          fps: 15,
-          qrbox: (width, height) => {
-            // Rectangular shape suitable for Code 128 barcodes (usually long and narrow)
-            const boxWidth = Math.min(width * 0.85, 320);
-            const boxHeight = Math.min(height * 0.35, 120);
-            return { width: boxWidth, height: boxHeight };
-          },
+          fps: 20,
+          // Scan the entire frame (no qrbox) for faster and more accurate barcode recognition
           formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128]
         };
 
@@ -59,14 +78,13 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
           { facingMode: 'environment' },
           config,
           (decodedText, decodedResult) => {
-            // Success
             if (isMountedRef.current) {
               onScanSuccess(decodedText);
               handleClose();
             }
           },
           (errorMessage) => {
-            // Ignore verbose matching errors to avoid flooding console/logs
+            // Ignore verbose match failure logs
           }
         );
 
@@ -74,28 +92,34 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
           setIsInitializing(false);
         }
       } catch (err) {
-        console.error('Error starting scanner:', err);
+        console.error('Error starting camera scanner:', err);
         if (isMountedRef.current) {
-          setErrorMsg('Gagal mengakses kamera belakang HP. Pastikan izin kamera telah diberikan.');
+          setErrorMsg(
+            'Gagal membuka kamera belakang. Pastikan izin kamera telah diberikan di browser Anda.'
+          );
           setIsInitializing(false);
         }
+      } finally {
+        isInitializingRef.current = false;
       }
     };
 
     startScanner();
 
     return () => {
-      if (html5QrCode) {
-        if (html5QrCode.isScanning) {
-          html5QrCode.stop()
-            .then(() => {
+      const stopAndClean = async () => {
+        if (html5QrCode) {
+          try {
+            if (html5QrCode.isScanning) {
+              await html5QrCode.stop();
               console.log('Scanner stopped successfully on cleanup');
-            })
-            .catch((err) => {
-              console.error('Error stopping scanner on cleanup:', err);
-            });
+            }
+          } catch (err) {
+            console.error('Error stopping scanner on cleanup:', err);
+          }
         }
-      }
+      };
+      stopAndClean();
       html5QrCodeRef.current = null;
     };
   }, [isOpen]);
@@ -134,8 +158,8 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
           </div>
         ) : (
           <div className="relative overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center aspect-video shadow-inner">
-            {/* The element where video will render */}
-            <div id="barcode-scanner-reader" className="w-full h-full object-cover" />
+            {/* The element where video will render. Letting html5-qrcode control the height */}
+            <div id="barcode-scanner-reader" className="w-full text-white" />
 
             {isInitializing && (
               <div className="absolute inset-0 bg-slate-900/90 dark:bg-slate-950/90 flex flex-col items-center justify-center gap-3">
@@ -149,10 +173,10 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
             {/* Visual Guide Lines */}
             {!isInitializing && (
               <>
-                <div className="absolute inset-0 border-[3px] border-orange-500/20 pointer-events-none rounded-3xl" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[35%] border-2 border-dashed border-orange-500 animate-pulse pointer-events-none rounded-xl" />
+                <div className="absolute inset-0 border-[3px] border-orange-500/20 pointer-events-none rounded-3xl z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[35%] border-2 border-dashed border-orange-500 animate-pulse pointer-events-none rounded-xl z-10" />
                 {/* Scanning red laser line */}
-                <div className="absolute top-1/2 left-[7.5%] w-[85%] h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse pointer-events-none" />
+                <div className="absolute top-1/2 left-[7.5%] w-[85%] h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse pointer-events-none z-10" />
               </>
             )}
           </div>
