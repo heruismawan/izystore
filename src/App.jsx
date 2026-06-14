@@ -9,6 +9,7 @@ import WarrantyView from './views/WarrantyView';
 import ReportsView from './views/ReportsView';
 import UserManagementView from './views/UserManagementView';
 import LoginView from './views/LoginView';
+import ServisView from './views/ServisView';
 import { Menu, LogOut } from 'lucide-react';
 import logoImg from './assets/logo.png';
 
@@ -39,6 +40,8 @@ function AppContent() {
         return <InventoryView />;
       case 'tradein':
         return <TradeInView />;
+      case 'servis':
+        return <ServisView />;
       case 'transactions':
         return <TransactionsView />;
       case 'warranty':

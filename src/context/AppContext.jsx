@@ -19,6 +19,26 @@ export const AppProvider = ({ children }) => {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [salespersons, setSalespersons] = useState(initialSalespersons);
   const [warrantyClaims, setWarrantyClaims] = useState(initialWarrantyClaims);
+  const [expenses, setExpenses] = useState([
+    { id: 'e1', date: '2026-06-05T09:00:00Z', category: 'Minuman', amount: 35000, description: 'Beli air mineral gelas 1 dus' },
+    { id: 'e2', date: '2026-06-08T14:30:00Z', category: 'Cemilan', amount: 50000, description: 'Beli biskuit dan snack customer' }
+  ]);
+
+  const addExpense = (newExpense) => {
+    setExpenses((prev) => [
+      {
+        ...newExpense,
+        id: 'exp_' + Date.now(),
+        date: new Date().toISOString(),
+        amount: parseFloat(newExpense.amount) || 0
+      },
+      ...prev
+    ]);
+  };
+
+  const deleteExpense = (id) => {
+    setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+  };
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     return savedTheme || 'light';
@@ -58,10 +78,13 @@ export const AppProvider = ({ children }) => {
   const addToCart = (product) => {
     // If it's a gadget, it has a unique IMEI, so maximum qty is 1 and must check if already in cart
     if (product.kategori === 'Gadget') {
-      const exists = cart.some((item) => item.id === product.id);
-      if (exists) return { success: false, message: 'Gadget dengan IMEI ini sudah berada di keranjang.' };
+      const countInCart = cart.filter((item) => item.id === product.id).length;
+      if (countInCart >= product.stok) {
+        return { success: false, message: 'Stok gadget ini di keranjang sudah maksimal.' };
+      }
       
-      setCart((prev) => [...prev, { ...product, qty: 1 }]);
+      const cartId = 'cart_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      setCart((prev) => [...prev, { ...product, cartId, qty: 1 }]);
       return { success: true };
     } else {
       // Accessories can have quantities
@@ -83,8 +106,8 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
+  const removeFromCart = (cartId) => {
+    setCart((prev) => prev.filter((item) => (item.cartId ? item.cartId !== cartId : item.id !== cartId)));
   };
 
   const updateCartQty = (productId, newQty) => {
@@ -111,10 +134,19 @@ export const AppProvider = ({ children }) => {
     );
   };
 
+  const updateCartItemImei = (cartId, physicalImei) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        const itemIdentifier = item.cartId || item.id;
+        return itemIdentifier === cartId ? { ...item, physicalImei } : item;
+      })
+    );
+  };
+
   const clearCart = () => setCart([]);
 
   // --- PENDING TRANSACTIONS (Hold / Resume) ---
-  const holdTransaction = (salespersonName) => {
+  const holdTransaction = (salespersonName, salespersonRole) => {
     if (cart.length === 0) return { success: false, message: 'Keranjang belanja kosong.' };
     
     const newHold = {
@@ -122,6 +154,7 @@ export const AppProvider = ({ children }) => {
       date: new Date().toISOString(),
       items: [...cart],
       salesperson: salespersonName || 'Tanpa Sales',
+      salespersonRole: salespersonRole || 'Sales',
       total: cart.reduce((acc, item) => acc + item.hargaJual * item.qty, 0)
     };
     
@@ -146,7 +179,8 @@ export const AppProvider = ({ children }) => {
   // --- INVENTORY OPERATIONS ---
   const addInventoryItem = (newItem) => {
     // Generate code/SKU if empty
-    const prefix = newItem.brand.slice(0, 3).toUpperCase();
+    const brand = newItem.brand || 'Apple';
+    const prefix = brand.slice(0, 3).toUpperCase();
     const modelClean = newItem.model.replace(/\s+/g, '').toUpperCase();
     const genSku = newItem.sku || `${prefix}-${modelClean}-${newItem.kondisi === 'Bekas' ? 'SECO' : 'NEW'}-${Date.now().toString().slice(-4)}`;
     
@@ -174,7 +208,7 @@ export const AppProvider = ({ children }) => {
 
   // --- CHECKOUT & TRANSACTION LOGGING ---
   const completeTransaction = (transactionData) => {
-    const { items, salesperson, discount, total, paymentMethod, cashAmount, changeAmount, tradeInDetails } = transactionData;
+    const { items, salesperson, salespersonRole, discount, total, paymentMethod, cashAmount, changeAmount, tradeInDetails, isSplitPayment, splitDetails } = transactionData;
     
     // 1. Deduct Stock or Add Trade-In device
     setInventory((prevInventory) => {
@@ -214,11 +248,7 @@ export const AppProvider = ({ children }) => {
           gradeFisik: tradeInDetails.gradeFisik || 'B',
           minus: tradeInDetails.minus || '',
           createdAt: new Date().toISOString(),
-          // Data penjual untuk audit hukum
-          sellerName: tradeInDetails.sellerName,
-          sellerKtp: tradeInDetails.sellerKtp,
-          sellerPhone: tradeInDetails.sellerPhone,
-          ktpImage: tradeInDetails.ktpImage
+
         };
         updatedInventory.unshift(tradeInItem);
       }
@@ -234,13 +264,16 @@ export const AppProvider = ({ children }) => {
       date: new Date().toISOString(),
       items: items.map(item => ({...item})),
       salesperson: salesperson || 'Tanpa Sales',
+      salespersonRole: salespersonRole || 'Sales',
       discount: discount || 0,
       total,
       paymentMethod,
       cashAmount: cashAmount || total,
       changeAmount: changeAmount || 0,
       tradeInDetails: tradeInDetails && tradeInDetails.isTradeIn ? { ...tradeInDetails } : null,
-      type: tradeInDetails && tradeInDetails.isTradeIn ? 'Tukar Tambah' : 'Penjualan'
+      type: transactionData.type || (tradeInDetails && tradeInDetails.isTradeIn ? 'Tukar Tambah' : 'Penjualan'),
+      isSplitPayment: isSplitPayment || false,
+      splitDetails: splitDetails || null
     };
 
     setTransactions((prev) => [newTransaction, ...prev]);
@@ -285,6 +318,7 @@ export const AppProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateCartQty,
+        updateCartItemImei,
         clearCart,
         
         pendingTransactions,
@@ -300,6 +334,9 @@ export const AppProvider = ({ children }) => {
         warrantyClaims,
         addWarrantyClaim,
         updateWarrantyClaimStatus,
+        expenses,
+        addExpense,
+        deleteExpense,
         theme,
         toggleTheme
       }}

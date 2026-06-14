@@ -31,14 +31,15 @@ export const TransactionsView = () => {
 
   // Filtered transactions
   const filteredTx = transactions.filter((tx) => {
-    // Search by invoice, salesperson, or item details (model, imei)
+    // Search by invoice, salesperson, or item details (model, imei, barcode)
     const matchesSearch = 
       tx.invoiceNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.salesperson.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.items.some(
         (item) =>
           item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (item.imei && item.imei.includes(searchQuery))
+          (item.imei && item.imei.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item.barcode && item.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
       );
 
     const matchesMethod = 
@@ -61,17 +62,72 @@ export const TransactionsView = () => {
     return items.reduce((acc, item) => acc + item.hargaJual * item.qty, 0);
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      'No Invoice',
+      'Tanggal Transaksi',
+      'Karyawan (Sales)',
+      'Peran',
+      'Item Produk',
+      'Kode Barcode',
+      'Total Bayar',
+      'Metode Pembayaran'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    filteredTx.forEach((tx) => {
+      const itemsString = tx.items
+        .map((item) => `${item.qty}x ${item.model} (IMEI: ${item.imei || '-'})`)
+        .join('; ');
+      
+      const barcodesString = tx.items
+        .map((item) => item.barcode || item.imei || '-')
+        .join('; ');
+
+      const row = [
+        `"${tx.invoiceNo}"`,
+        `"${new Date(tx.date).toLocaleString('id-ID')}"`,
+        `"${tx.salesperson}"`,
+        `"${tx.salespersonRole || '-'}"`,
+        `"${itemsString.replace(/"/g, '""')}"`,
+        `"${barcodesString.replace(/"/g, '""')}"`,
+        tx.total,
+        `"${tx.paymentMethod}"`
+      ];
+
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `riwayat-penjualan-izystore-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-4 flex flex-col gap-6 text-left dark:text-slate-200">
       {/* Header Block */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-5 transition-all duration-300">
-        <h2 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 m-0 flex items-center gap-2">
-          <FileText size={22} className="text-orange-500 dark:text-orange-400" />
-          Riwayat Penjualan & Transaksi Toko
-        </h2>
-        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
-          Cari nota penjualan lama berdasarkan nomor Invoice, nama Sales, nama produk, atau nomor IMEI untuk memverifikasi klaim garansi pelanggan.
-        </p>
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-5 transition-all duration-300">
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 m-0 flex items-center gap-2">
+            <FileText size={22} className="text-orange-500 dark:text-orange-400" />
+            Riwayat Penjualan & Transaksi Toko
+          </h2>
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
+            Cari nota penjualan lama berdasarkan nomor Invoice, nama Sales, nama produk, atau nomor IMEI untuk memverifikasi klaim garansi pelanggan.
+          </p>
+        </div>
+        <Button variant="green" onClick={handleExportCSV} className="flex items-center gap-1.5 !rounded-xl shrink-0">
+          <Share2 size={14} strokeWidth={2.5} />
+          <span>Ekspor Excel</span>
+        </Button>
       </div>
 
       <Card
@@ -80,7 +136,7 @@ export const TransactionsView = () => {
         bodyClassName="p-4 flex flex-col gap-4"
         headerAction={
           <div className="flex gap-2 w-full overflow-x-auto scrollbar-none pb-0.5">
-            {['Semua', 'Tunai', 'QRIS', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
+            {['Semua', 'Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
               <button
                 key={method}
                 onClick={() => setSelectedMethod(method)}
@@ -102,7 +158,7 @@ export const TransactionsView = () => {
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between mb-2">
           <div className="w-full md:max-w-sm">
             <Input
-              placeholder="Cari No Invoice, Sales, Produk, IMEI..."
+              placeholder="Cari No Invoice, Sales, Produk, IMEI, Barcode..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               icon={Search}
@@ -127,7 +183,7 @@ export const TransactionsView = () => {
 
         {/* Transactions Table */}
         <Table
-          headers={['No Invoice', 'Tanggal Transaksi', 'Karyawan (Sales)', 'Item Produk', 'Potongan', 'Total Bayar', 'Metode', 'Aksi']}
+          headers={['No Invoice', 'Tanggal Transaksi', 'Karyawan (Sales)', 'Item Produk', 'Kode Barcode', 'Total Bayar', 'Metode', 'Aksi']}
           rows={filteredTx}
           renderRow={(tx) => (
             <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
@@ -146,8 +202,13 @@ export const TransactionsView = () => {
               <td className="px-4 py-3.5">
                 {new Date(tx.date).toLocaleString('id-ID')}
               </td>
-              <td className="px-4 py-3.5 font-bold">
-                {tx.salesperson}
+              <td className="px-4 py-3.5">
+                <div className="font-bold text-slate-800 dark:text-slate-100">{tx.salesperson}</div>
+                {tx.salespersonRole && (
+                  <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/40 mt-1 inline-block">
+                    {tx.salespersonRole}
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3.5 max-w-[200px]">
                 <div className="flex flex-col gap-1">
@@ -160,13 +221,19 @@ export const TransactionsView = () => {
                   {tx.tradeInDetails && (
                     <div className="mt-1 pt-1.5 border-t border-dashed border-slate-100 dark:border-slate-800/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-1.5 text-[9px] text-slate-600 dark:text-slate-400">
                       <span className="font-black text-blue-600 dark:text-blue-400 block">HP LAMA DIRETUR:</span>
-                      <span>{tx.tradeInDetails.brand} {tx.tradeInDetails.model} (IMEI: {tx.tradeInDetails.imei})</span>
+                      <span>{tx.tradeInDetails.model} (IMEI: {tx.tradeInDetails.imei})</span>
                     </div>
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3.5 text-red-500 dark:text-red-400 font-mono font-bold">
-                {tx.discount > 0 ? `-${handleFormatRupiah(tx.discount)}` : 'Rp0'}
+              <td className="px-4 py-3.5 font-mono">
+                <div className="flex flex-col gap-1">
+                  {tx.items.map((item, idx) => (
+                    <span key={idx} className="block text-[10px] text-slate-700 dark:text-slate-350 bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5 truncate max-w-[120px] font-bold" title={item.barcode || item.imei || '-'}>
+                      {item.barcode || item.imei || '-'}
+                    </span>
+                  ))}
+                </div>
               </td>
               <td className="px-4 py-3.5 font-black font-mono text-slate-800 dark:text-slate-100">
                 {handleFormatRupiah(tx.total)}
@@ -223,7 +290,9 @@ export const TransactionsView = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Sales:</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-200">{activeTx.salesperson}</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    {activeTx.salesperson} {activeTx.salespersonRole ? `(${activeTx.salespersonRole})` : ''}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Jenis:</span>
@@ -249,7 +318,7 @@ export const TransactionsView = () => {
                 {activeTx.tradeInDetails && (
                   <div className="mt-1 pt-1.5 border-t border-dotted border-slate-200 dark:border-slate-800/40 flex flex-col bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-2 text-[9px] text-slate-600 dark:text-slate-400">
                     <span className="font-black text-blue-600 dark:text-blue-400 block">TUKAR TAMBAH (HP DITERIMA TOKO):</span>
-                    <span className="font-bold">{activeTx.tradeInDetails.brand} {activeTx.tradeInDetails.model}</span>
+                    <span className="font-bold">{activeTx.tradeInDetails.model}</span>
                     <span>IMEI: {activeTx.tradeInDetails.imei}</span>
                     <span className="font-bold text-right text-red-500 dark:text-red-400">-{handleFormatRupiah(activeTx.tradeInDetails.taksiranHarga)}</span>
                   </div>
@@ -272,26 +341,41 @@ export const TransactionsView = () => {
                   <span>TOTAL:</span>
                   <span>{handleFormatRupiah(activeTx.total)}</span>
                 </div>
-                <div className="flex justify-between mt-1">
-                  <span>Bayar ({activeTx.paymentMethod}):</span>
-                  <span className="uppercase dark:text-slate-300">{handleFormatRupiah(activeTx.cashAmount)}</span>
-                </div>
-                {activeTx.paymentMethod === 'Tunai' && (
+              {activeTx.isSplitPayment && activeTx.splitDetails ? (
+                <div className="flex flex-col gap-0.5 border-t border-dotted border-slate-200 dark:border-slate-800/40 pt-1.5 mt-1 text-[8px] text-slate-400 dark:text-slate-500 font-bold">
+                  <div className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-450 mb-0.5">Rincian Split Payment:</div>
                   <div className="flex justify-between">
-                    <span>Kembalian:</span>
-                    <span className="dark:text-slate-300">{handleFormatRupiah(activeTx.changeAmount)}</span>
+                    <span>- {activeTx.splitDetails.method1}:</span>
+                    <span>{handleFormatRupiah(activeTx.splitDetails.amount1)}</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span>- {activeTx.splitDetails.method2}:</span>
+                    <span>{handleFormatRupiah(activeTx.splitDetails.amount2)}</span>
+                  </div>
+                  {activeTx.changeAmount > 0 && (
+                    <div className="flex justify-between text-slate-700 dark:text-slate-200 mt-0.5 border-t border-dashed border-slate-200 dark:border-slate-800/20 pt-1">
+                      <span>Kembalian Tunai:</span>
+                      <span>{handleFormatRupiah(activeTx.changeAmount)}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between mt-1">
+                    <span>Bayar ({activeTx.paymentMethod}):</span>
+                    <span className="uppercase dark:text-slate-300">{handleFormatRupiah(activeTx.cashAmount)}</span>
+                  </div>
+                  {activeTx.paymentMethod === 'Tunai' && (
+                    <div className="flex justify-between">
+                      <span>Kembalian:</span>
+                      <span className="dark:text-slate-300">{handleFormatRupiah(activeTx.changeAmount)}</span>
+                    </div>
+                  )}
+                </>
+              )}
               </div>
 
-              {activeTx.tradeInDetails && (
-                <div className="border-t border-dotted border-slate-200 dark:border-slate-800/40 pt-2 text-[8px] text-slate-400 dark:text-slate-500 font-bold leading-relaxed">
-                  <div className="text-[9px] font-black text-slate-500 dark:text-slate-400">DATA HUKUM PENJUAL:</div>
-                  <div>Nama: {activeTx.tradeInDetails.sellerName}</div>
-                  <div>KTP: {activeTx.tradeInDetails.sellerKtp}</div>
-                  <div>HP: {activeTx.tradeInDetails.sellerPhone}</div>
-                </div>
-              )}
+
 
               <div className="text-center border-t border-dashed border-slate-200 dark:border-slate-800/40 pt-3 mt-2 text-[8px] text-slate-400 dark:text-slate-500 font-bold">
                 <span>TERIMA KASIH ATAS KUNJUNGAN ANDA</span>

@@ -11,7 +11,8 @@ import {
   FileText,
   Sun,
   Moon,
-  LogOut
+  LogOut,
+  Wrench
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
@@ -39,6 +40,13 @@ export const Sidebar = ({ activeView, setActiveView }) => {
       icon: RefreshCw,
       allowedRoles: ['kasir', 'admin', 'owner'],
       color: 'hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-950/20'
+    },
+    {
+      id: 'servis',
+      label: 'Transaksi Servis',
+      icon: Wrench,
+      allowedRoles: ['kasir', 'admin', 'owner'],
+      color: 'hover:text-amber-600 hover:bg-amber-50 dark:hover:text-amber-400 dark:hover:bg-amber-950/20'
     },
     {
       id: 'transactions',

@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { Search, ShieldCheck, AlertCircle, CheckCircle, Wrench } from 'lucide-react';
+import { Search, ShieldCheck, AlertCircle, CheckCircle, Wrench, Plus } from 'lucide-react';
 
 export const WarrantyView = () => {
   const {
@@ -103,6 +103,17 @@ export const WarrantyView = () => {
     setShowClaimForm(true);
   };
 
+  const handleOpenNewClaimForm = () => {
+    setClaimForm({
+      imei: '',
+      customerName: '',
+      customerPhone: '',
+      issueDescription: '',
+      notes: ''
+    });
+    setShowClaimForm(true);
+  };
+
   const handleCreateClaim = (e) => {
     e.preventDefault();
     if (!claimForm.imei || claimForm.imei.length !== 15) {
@@ -154,14 +165,20 @@ export const WarrantyView = () => {
   return (
     <div className="p-4 flex flex-col gap-6 text-left dark:text-slate-200">
       {/* Title block */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-5 transition-all duration-300">
-        <h2 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 m-0 flex items-center gap-2">
-          <ShieldCheck size={22} className="text-emerald-500 dark:text-emerald-400" />
-          Manajemen & Klaim Garansi Gadget
-        </h2>
-        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
-          Cari masa garansi perangkat berdasarkan nomor IMEI, daftarkan klaim kerusakan, dan pantau status servis.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-5 transition-all duration-300">
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 m-0 flex items-center gap-2">
+            <ShieldCheck size={22} className="text-emerald-500 dark:text-emerald-400" />
+            Manajemen & Klaim Garansi Gadget
+          </h2>
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
+            Cari masa garansi perangkat berdasarkan nomor IMEI, daftarkan klaim kerusakan, dan pantau status servis.
+          </p>
+        </div>
+        <Button variant="green" onClick={handleOpenNewClaimForm} className="flex items-center gap-1.5 !rounded-xl whitespace-nowrap">
+          <Plus size={14} strokeWidth={2.5} />
+          <span>Tambah Klaim / Servis</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -200,7 +217,7 @@ export const WarrantyView = () => {
                     <div className="flex flex-col gap-2">
                       <div className="flex justify-between">
                         <span className="text-slate-400 dark:text-slate-500">Model:</span>
-                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{searchResult.device.brand} {searchResult.device.model}</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{searchResult.device.model}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400 dark:text-slate-500">Kondisi / Warna:</span>

@@ -25,7 +25,6 @@ export const InventoryView = () => {
 
   // Search/Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Semua');
 
   // Form States (Add/Edit)
   const [showFormModal, setShowFormModal] = useState(false);
@@ -33,13 +32,13 @@ export const InventoryView = () => {
   const [formData, setFormData] = useState({
     id: '',
     sku: '',
-    brand: '',
+    brand: 'Apple',
     model: '',
     warna: '',
     ram: '',
     rom: '',
     kondisi: 'Baru', // 'Baru' / 'Bekas'
-    kategori: 'Gadget', // 'Gadget' / 'Aksesoris'
+    kategori: 'Gadget',
     hargaBeli: '',
     hargaJual: '',
     stok: '1',
@@ -62,17 +61,11 @@ export const InventoryView = () => {
 
   // Filters
   const filteredInventory = inventory.filter((item) => {
-    const matchesSearch = 
-      item.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    return (
       item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.imei && item.imei.includes(searchQuery));
-
-    const matchesCategory = 
-      selectedCategory === 'Semua' || 
-      item.kategori === selectedCategory;
-
-    return matchesSearch && matchesCategory;
+      (item.imei && item.imei.includes(searchQuery))
+    );
   });
 
   // Open add item form
@@ -80,7 +73,7 @@ export const InventoryView = () => {
     setFormData({
       id: '',
       sku: '',
-      brand: '',
+      brand: 'Apple',
       model: '',
       warna: '',
       ram: '',
@@ -105,9 +98,9 @@ export const InventoryView = () => {
   const handleOpenEdit = (product) => {
     setFormData({
       ...product,
-      hargaBeli: product.hargaBeli.toString(),
-      hargaJual: product.hargaJual.toString(),
-      stok: product.stok.toString(),
+      hargaBeli: (product.hargaBeli ?? 0).toString(),
+      hargaJual: (product.hargaJual ?? 0).toString(),
+      stok: (product.stok ?? 0).toString(),
       batteryHealth: product.batteryHealth ? product.batteryHealth.toString() : '85',
       garansiAsal: product.garansiAsal || 'iBox',
       garansiAktif: product.garansiAktif || false,
@@ -118,22 +111,23 @@ export const InventoryView = () => {
     setShowFormModal(true);
   };
 
+  const handleKategoriChange = (e) => {
+    const val = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      kategori: val,
+      // If Aksesoris, lock kondisi to 'Baru'
+      kondisi: val === 'Aksesoris' ? 'Baru' : prev.kondisi
+    }));
+  };
+
   // Submit Form
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (formData.kategori === 'Gadget') {
-      if (!formData.imei || formData.imei.length !== 15) {
-        alert('Nomor IMEI 15 digit wajib diisi untuk kategori Gadget!');
-        return;
-      }
-      
-      // Check IMEI uniqueness for new items (excluding current editing item)
-      const imeiExists = inventory.some(item => item.imei === formData.imei && item.id !== formData.id);
-      if (imeiExists) {
-        alert('Error: Nomor IMEI ini sudah terdaftar di sistem!');
-        return;
-      }
+    if (!formData.imei) {
+      alert('Kode Barcode / Batch Supplier wajib diisi!');
+      return;
     }
 
     const itemPayload = {
@@ -143,8 +137,9 @@ export const InventoryView = () => {
         : 0,
       hargaJual: parseFloat(formData.hargaJual) || 0,
       stok: parseInt(formData.stok) || 1,
-      // Bekas specifications
-      batteryHealth: formData.kondisi === 'Bekas' && formData.brand.toLowerCase() === 'apple' ? parseInt(formData.batteryHealth) : null,
+      warna: formData.kategori === 'Aksesoris' ? '-' : formData.warna,
+      rom: formData.kategori === 'Aksesoris' ? '-' : formData.rom,
+      batteryHealth: formData.kondisi === 'Bekas' ? parseInt(formData.batteryHealth) : null,
       garansiAsal: formData.kondisi === 'Bekas' ? formData.garansiAsal : null,
       garansiAktif: formData.kondisi === 'Bekas' ? (formData.garansiAktif === 'true' || formData.garansiAktif === true) : null,
       gradeFisik: formData.kondisi === 'Bekas' ? formData.gradeFisik : null,
@@ -204,25 +199,7 @@ export const InventoryView = () => {
         title="Daftar Inventaris Toko"
         headerBg="bg-orange-100/70"
         bodyClassName="p-4 flex flex-col gap-4"
-        headerAction={
-          <div className="flex gap-2 w-full overflow-x-auto scrollbar-none pb-0.5">
-            {['Semua', 'Gadget', 'Aksesoris'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`
-                  px-3 py-1.5 rounded-xl font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer border border-transparent shrink-0
-                  ${selectedCategory === cat 
-                    ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 shadow-sm' 
-                    : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'
-                  }
-                `}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        }
+
       >
         {/* Search filter */}
         <div className="w-full max-w-sm mb-2">
@@ -236,21 +213,22 @@ export const InventoryView = () => {
 
         {/* Table inventory list */}
         <Table
-          headers={['SKU / IMEI', 'Produk', 'Kondisi', 'Stok', 'Harga Jual', 'Atribut Tambahan', 'Aksi']}
+          headers={['SKU / Barcode', 'Produk', 'Kondisi', 'Stok', 'Harga Jual', 'Atribut Tambahan', 'Aksi']}
           rows={filteredInventory}
           renderRow={(product, index) => {
-            const isAppleBekas = product.kondisi === 'Bekas' && product.brand.toLowerCase() === 'apple';
+            const isAppleBekas = product.kondisi === 'Bekas';
             
             return (
               <tr key={product.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 font-mono">
                   <div className="font-bold text-slate-800 dark:text-slate-100">{product.sku}</div>
-                  {product.imei && <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">IMEI: {product.imei}</div>}
+                  {product.imei && <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">Barcode: {product.imei}</div>}
                 </td>
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30">
-                  <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 block">{product.brand}</span>
                   <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">{product.model}</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">{product.warna} {product.ram && `• ${product.ram}/${product.rom}`}</span>
+                  {product.kategori === 'Gadget' && (
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">{product.warna} {product.rom && `• ${product.rom}`}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-center">
                   <span className={`
@@ -270,7 +248,7 @@ export const InventoryView = () => {
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-[10px] max-w-[200px]">
                   {product.kondisi === 'Bekas' ? (
                     <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-400">
-                      {product.brand.toLowerCase() === 'apple' && <div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>}
+                      {<div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>}
                       <div>Garansi: <span className="font-bold text-slate-800 dark:text-slate-200">{product.garansiAsal || '-'} ({product.garansiAktif ? 'Aktif' : 'Habis'})</span></div>
                       <div>Fisik Grade: <span className="font-bold text-slate-800 dark:text-slate-200">{product.gradeFisik || '-'}</span></div>
                       <div>Minus: <span className="font-bold text-red-600 dark:text-red-400">{product.minus || 'Mulus (No Minus)'}</span></div>
@@ -324,16 +302,16 @@ export const InventoryView = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
           
           <div className="grid grid-cols-2 gap-3">
-            {/* Kategori select */}
+            {/* Kategori Select */}
             <div className="flex flex-col gap-1 text-left">
-              <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Kategori Produk</label>
+              <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Kategori Barang</label>
               <select
                 value={formData.kategori}
-                onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200"
+                onChange={handleKategoriChange}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
               >
-                <option value="Gadget">Gadget / Handphone</option>
-                <option value="Aksesoris">Aksesoris / Suku Cadang</option>
+                <option value="Gadget">Gadget</option>
+                <option value="Aksesoris">Aksesoris / Sparepart</option>
               </select>
             </div>
 
@@ -342,8 +320,9 @@ export const InventoryView = () => {
               <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Kondisi Barang</label>
               <select
                 value={formData.kondisi}
+                disabled={formData.kategori === 'Aksesoris'}
                 onChange={(e) => setFormData({ ...formData, kondisi: e.target.value })}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200"
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="Baru">Baru (New)</option>
                 <option value="Bekas">Bekas (Second)</option>
@@ -351,57 +330,39 @@ export const InventoryView = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Brand / Merk"
-              placeholder="Contoh: Apple, Samsung, Anker"
-              value={formData.brand}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              required
-            />
-            <Input
-              label="Model / Nama Produk"
-              placeholder="Contoh: iPhone 13 Pro, Charger 20W"
-              value={formData.model}
-              onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Warna"
-              placeholder="Contoh: Midnight"
-              value={formData.warna}
-              onChange={(e) => setFormData({ ...formData, warna: e.target.value })}
-              required
-            />
-            <Input
-              label="RAM"
-              placeholder="Contoh: 6 GB"
-              value={formData.ram}
-              onChange={(e) => setFormData({ ...formData, ram: e.target.value })}
-              disabled={formData.kategori === 'Aksesoris'}
-            />
-            <Input
-              label="ROM / Kapasitas"
-              placeholder="Contoh: 128 GB"
-              value={formData.rom}
-              onChange={(e) => setFormData({ ...formData, rom: e.target.value })}
-              disabled={formData.kategori === 'Aksesoris'}
-            />
-          </div>
+          <Input
+            label="Model / Nama Produk"
+            placeholder="Contoh: iPhone 13 Pro, iPad Pro"
+            value={formData.model}
+            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+            required
+          />
 
           {formData.kategori === 'Gadget' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Warna"
+                placeholder="Contoh: Midnight"
+                value={formData.warna}
+                onChange={(e) => setFormData({ ...formData, warna: e.target.value })}
+                required
+              />
+              <Input
+                label="ROM / Kapasitas"
+                placeholder="Contoh: 128 GB"
+                value={formData.rom}
+                onChange={(e) => setFormData({ ...formData, rom: e.target.value })}
+              />
+            </div>
+          )}
+
             <Input
-              label="Nomor IMEI / Serial Number (15 Digit)"
-              placeholder="Masukkan IMEI unik perangkat"
+              label="Kode Barcode / Batch Supplier"
+              placeholder="Contoh: a1-64-11\64-7"
               value={formData.imei}
-              onChange={(e) => setFormData({ ...formData, imei: e.target.value.replace(/\D/g, '') })}
-              maxLength={15}
+              onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
               required
             />
-          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -415,19 +376,17 @@ export const InventoryView = () => {
             <Input
               label="Stok Unit"
               type="number"
-              placeholder="Kuantitas"
               value={formData.stok}
               onChange={(e) => setFormData({ ...formData, stok: e.target.value })}
-              disabled={formData.kategori === 'Gadget'} // Gadgets are unique unit per IMEI (strictly 1)
               required
             />
           </div>
 
           {/* DYNAMIC SPECS FOR APPLE BEKAS / SECOND HP */}
-          {formData.kondisi === 'Bekas' && (
+          {formData.kategori === 'Gadget' && formData.kondisi === 'Bekas' && (
             <div className="border border-slate-100 dark:border-slate-800/40 rounded-2xl bg-slate-50/70 dark:bg-slate-950/40 p-5 flex flex-col gap-3">
               <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block border-b border-slate-100 dark:border-slate-800/40 pb-1.5">
-                Spesifikasi Kondisi Bekas {formData.brand.toLowerCase() === 'apple' ? '(iPhone Spec)' : ''}
+                Spesifikasi Kondisi Bekas (iPhone Spec)
               </span>
 
               <div className="grid grid-cols-2 gap-3">
@@ -470,7 +429,6 @@ export const InventoryView = () => {
                   </select>
                 </div>
                 
-                {formData.brand.toLowerCase() === 'apple' && (
                   <Input
                     label="Battery Health (%)"
                     type="number"
@@ -478,7 +436,6 @@ export const InventoryView = () => {
                     onChange={(e) => setFormData({ ...formData, batteryHealth: e.target.value })}
                     placeholder="85"
                   />
-                )}
               </div>
 
               <div className="mt-2.5">
@@ -540,7 +497,7 @@ export const InventoryView = () => {
               </span>
               {barcodeProduct.imei && (
                 <span className="font-mono text-[8px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-full">
-                  IMEI: {barcodeProduct.imei}
+                  Barcode: {barcodeProduct.imei}
                 </span>
               )}
             </div>

@@ -1,4 +1,4 @@
-// Mock Data untuk POS-Gadget (izystore)
+// Mock Data untuk POS-Gadget (izystore) - Khusus Apple / iPhone & Tanpa Aksesoris
 
 export const initialUsers = [
   { id: 'u1', username: 'owner_toko', name: 'Owner Izystore', role: 'owner', pin: '9999' },
@@ -21,7 +21,6 @@ export const initialInventory = [
     brand: 'Apple',
     model: 'iPhone 15 Pro',
     warna: 'Blue Titanium',
-    ram: '8 GB',
     rom: '128 GB',
     kondisi: 'Baru',
     hargaBeli: 17500000,
@@ -32,22 +31,21 @@ export const initialInventory = [
   },
   {
     id: 'p2',
-    sku: 'S24U-256-GRY',
+    sku: 'IP15PM-256-GRY',
     imei: '359482061738492',
-    brand: 'Samsung',
-    model: 'Galaxy S24 Ultra',
-    warna: 'Titanium Gray',
-    ram: '12 GB',
+    brand: 'Apple',
+    model: 'iPhone 15 Pro Max',
+    warna: 'Natural Titanium',
     rom: '256 GB',
     kondisi: 'Baru',
-    hargaBeli: 18500000,
-    hargaJual: 20999000,
+    hargaBeli: 19500000,
+    hargaJual: 22499000,
     stok: 2,
     kategori: 'Gadget',
     createdAt: '2026-05-12T11:00:00Z'
   },
   
-  // Gadget Bekas & iPhone Atribut Khusus
+  // Gadget Bekas
   {
     id: 'p3',
     sku: 'IP13P-256-GLD-SECO',
@@ -55,14 +53,12 @@ export const initialInventory = [
     brand: 'Apple',
     model: 'iPhone 13 Pro',
     warna: 'Gold',
-    ram: '6 GB',
     rom: '256 GB',
     kondisi: 'Bekas',
     hargaBeli: 9000000,
     hargaJual: 11500000,
     stok: 1,
     kategori: 'Gadget',
-    // Atribut Khusus Bekas / iPhone
     batteryHealth: 84,
     garansiAsal: 'iBox',
     garansiAktif: false,
@@ -77,14 +73,12 @@ export const initialInventory = [
     brand: 'Apple',
     model: 'iPhone 11',
     warna: 'Black',
-    ram: '4 GB',
     rom: '128 GB',
     kondisi: 'Bekas',
     hargaBeli: 4000000,
     hargaJual: 5200000,
     stok: 1,
     kategori: 'Gadget',
-    // Atribut Khusus Bekas
     batteryHealth: 79,
     garansiAsal: 'Inter',
     garansiAktif: false,
@@ -92,46 +86,36 @@ export const initialInventory = [
     minus: 'FaceID Rusak/Off',
     createdAt: '2026-05-22T09:15:00Z'
   },
-  
-  // Aksesoris (Margin profit tebal)
+  // Spareparts / Aksesoris untuk Servis
   {
-    id: 'a1',
-    sku: 'ANK-PD20W-WHT',
-    brand: 'Anker',
-    model: 'Charger PowerPort PD 20W',
-    warna: 'White',
-    kondisi: 'Baru',
-    hargaBeli: 120000,
-    hargaJual: 249000,
-    stok: 15,
-    kategori: 'Aksesoris',
-    createdAt: '2026-05-01T08:00:00Z'
-  },
-  {
-    id: 'a2',
-    sku: 'TG-IP15P-PRIV',
-    brand: 'Spigen',
-    model: 'Tempered Glass Privacy iPhone 15 Pro',
-    warna: 'Clear/Tinted',
-    kondisi: 'Baru',
-    hargaBeli: 95000,
-    hargaJual: 199000,
-    stok: 25,
-    kategori: 'Aksesoris',
-    createdAt: '2026-05-01T08:00:00Z'
-  },
-  {
-    id: 'a3',
-    sku: 'CASE-IP13-MGSF',
-    brand: 'Ringke',
-    model: 'Fusion Magnetic Case iPhone 13',
-    warna: 'Matte Black',
+    id: 'sp1',
+    sku: 'SP-BAT-IP11',
+    imei: 'BAT-IP11-MOCK',
+    brand: 'Apple',
+    model: 'Baterai iPhone 11',
+    warna: 'OEM',
+    rom: '-',
     kondisi: 'Baru',
     hargaBeli: 150000,
-    hargaJual: 320000,
+    hargaJual: 350000,
     stok: 10,
     kategori: 'Aksesoris',
-    createdAt: '2026-05-02T08:00:00Z'
+    createdAt: '2026-06-01T08:00:00Z'
+  },
+  {
+    id: 'sp2',
+    sku: 'SP-LCD-IP13P',
+    imei: 'LCD-IP13P-MOCK',
+    brand: 'Apple',
+    model: 'Layar iPhone 13 Pro',
+    warna: 'Original',
+    rom: '-',
+    kondisi: 'Baru',
+    hargaBeli: 1200000,
+    hargaJual: 2200000,
+    stok: 5,
+    kategori: 'Aksesoris',
+    createdAt: '2026-06-01T08:30:00Z'
   }
 ];
 
@@ -141,14 +125,13 @@ export const initialTransactions = [
     invoiceNo: 'INV-20260601-001',
     date: '2026-06-01T10:15:00Z',
     items: [
-      { id: 'p1', brand: 'Apple', model: 'iPhone 15 Pro', kondisi: 'Baru', imei: '862491053748291', hargaJual: 19499000, hargaBeli: 17500000, qty: 1, kategori: 'Gadget' },
-      { id: 'a1', brand: 'Anker', model: 'Charger PowerPort PD 20W', kondisi: 'Baru', hargaJual: 249000, hargaBeli: 120000, qty: 1, kategori: 'Aksesoris' }
+      { id: 'p1', brand: 'Apple', model: 'iPhone 15 Pro', kondisi: 'Baru', imei: '862491053748291', hargaJual: 19499000, hargaBeli: 17500000, qty: 1, kategori: 'Gadget' }
     ],
     salesperson: 'Budi Hartono',
-    discount: 100000, // Diskon disetujui (<= 100rb, tidak butuh PIN)
-    total: 19648000,
-    paymentMethod: 'QRIS',
-    cashAmount: 19648000,
+    discount: 100000,
+    total: 19399000,
+    paymentMethod: 'Transfer Bank',
+    cashAmount: 19399000,
     changeAmount: 0,
     type: 'Penjualan'
   },
@@ -157,14 +140,14 @@ export const initialTransactions = [
     invoiceNo: 'INV-20260602-002',
     date: '2026-06-02T16:45:00Z',
     items: [
-      { id: 'a2', brand: 'Spigen', model: 'Tempered Glass Privacy iPhone 15 Pro', kondisi: 'Baru', hargaJual: 199000, hargaBeli: 95000, qty: 2, kategori: 'Aksesoris' }
+      { id: 'p3', brand: 'Apple', model: 'iPhone 13 Pro', kondisi: 'Bekas', imei: '358204918273645', hargaJual: 11500000, hargaBeli: 9000000, qty: 1, kategori: 'Gadget' }
     ],
     salesperson: 'Siti Rahma',
     discount: 0,
-    total: 398000,
+    total: 11500000,
     paymentMethod: 'Tunai',
-    cashAmount: 400000,
-    changeAmount: 2000,
+    cashAmount: 11500000,
+    changeAmount: 0,
     type: 'Penjualan'
   }
 ];
@@ -177,7 +160,7 @@ export const initialWarrantyClaims = [
     customerPhone: '081234567890',
     claimDate: '2026-06-03T11:00:00Z',
     issueDescription: 'Layar berkedip hijau setelah pemakaian 3 minggu',
-    status: 'Dalam Perbaikan', // 'Proses', 'Dalam Perbaikan', 'Selesai', 'Ditolak'
-    notes: 'Unit dikirim ke Authorized Service Center Apple.'
+    status: 'Dalam Perbaikan',
+    notes: 'Unit dikirim ke Service Center Apple.'
   }
 ];
