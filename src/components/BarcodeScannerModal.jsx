@@ -69,13 +69,13 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         html5QrCodeRef.current = html5QrCode;
 
         const config = {
-          fps: 20,
-          // Scan the entire frame (no qrbox) for faster and more accurate barcode recognition
+          fps: 10,
+          qrbox: { width: 300, height: 120 },
           formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128]
         };
 
         await html5QrCode.start(
-          { facingMode: 'environment' },
+          { facingMode: { exact: 'environment' } },
           config,
           (decodedText, decodedResult) => {
             if (isMountedRef.current) {
