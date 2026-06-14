@@ -69,18 +69,33 @@ export const BarcodeScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
         html5QrCodeRef.current = html5QrCode;
 
         const config = {
-          fps: 10,
-          qrbox: { width: 300, height: 120 },
-          formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128]
+          fps: 15,
+          qrbox: { width: 320, height: 130 },
+          formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+          videoConstraints: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: { exact: 'environment' }
+          }
         };
 
         await html5QrCode.start(
-          { facingMode: { exact: 'environment' } },
+          { 
+            facingMode: { exact: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           config,
           (decodedText, decodedResult) => {
             if (isMountedRef.current) {
-              onScanSuccess(decodedText);
-              handleClose();
+              const cleanText = decodedText.trim();
+              const barcodeRegex = /^[a-zA-Z0-9\-\\]+$/;
+              if (barcodeRegex.test(cleanText)) {
+                onScanSuccess(cleanText);
+                handleClose();
+              } else {
+                console.log(`Scan diabaikan (format tidak valid): ${cleanText}`);
+              }
             }
           },
           (errorMessage) => {
