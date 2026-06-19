@@ -47,6 +47,9 @@ function AppContent() {
       case 'warranty':
         return <WarrantyView />;
       case 'reports':
+        if (currentUser?.role !== 'owner') {
+          return <POSView />;
+        }
         return <ReportsView />;
       case 'usermanagement':
         return <UserManagementView />;

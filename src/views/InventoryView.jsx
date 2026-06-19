@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-import { 
-  Search, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Barcode, 
-  Smartphone 
+import {
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  Barcode,
+  Smartphone,
+  Share2
 } from 'lucide-react';
 
 export const InventoryView = () => {
@@ -25,6 +26,13 @@ export const InventoryView = () => {
 
   // Search/Filter State
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('Semua');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   // Form States (Add/Edit)
   const [showFormModal, setShowFormModal] = useState(false);
@@ -44,7 +52,6 @@ export const InventoryView = () => {
     stok: '1',
     imei: '',
     // Atribut Khusus Bekas
-    batteryHealth: '85',
     garansiAsal: 'iBox', // 'iBox' / 'Inter'
     garansiAktif: false, // true / false
     gradeFisik: 'A', // 'A' / 'B' / 'C'
@@ -55,18 +62,45 @@ export const InventoryView = () => {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [barcodeProduct, setBarcodeProduct] = useState(null);
 
+  // Export State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFilter, setExportFilter] = useState('Semua');
+
   // Role restrictions
   const isKasir = currentUser.role === 'kasir';
   const canModify = currentUser.role === 'admin' || currentUser.role === 'owner';
+  const isOwner = currentUser.role === 'owner';
 
   // Filters
   const filteredInventory = inventory.filter((item) => {
-    return (
-      item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.imei && item.imei.includes(searchQuery))
-    );
+      (item.imei && item.imei.includes(searchQuery));
+    const matchesCategory = categoryFilter === 'Semua' || item.kategori === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
+
+  const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
+  const activePage = Math.min(currentPage, totalPages || 1);
+  const displayedInventory = filteredInventory.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, activePage - 2);
+      let end = Math.min(totalPages, activePage + 2);
+      if (start === 1) {
+        end = 5;
+      } else if (end === totalPages) {
+        start = totalPages - 4;
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   // Open add item form
   const handleOpenAdd = () => {
@@ -84,7 +118,6 @@ export const InventoryView = () => {
       hargaJual: '',
       stok: '1',
       imei: '',
-      batteryHealth: '85',
       garansiAsal: 'iBox',
       garansiAktif: false,
       gradeFisik: 'A',
@@ -101,7 +134,6 @@ export const InventoryView = () => {
       hargaBeli: (product.hargaBeli ?? 0).toString(),
       hargaJual: (product.hargaJual ?? 0).toString(),
       stok: (product.stok ?? 0).toString(),
-      batteryHealth: product.batteryHealth ? product.batteryHealth.toString() : '85',
       garansiAsal: product.garansiAsal || 'iBox',
       garansiAktif: product.garansiAktif || false,
       gradeFisik: product.gradeFisik || 'A',
@@ -116,8 +148,8 @@ export const InventoryView = () => {
     setFormData((prev) => ({
       ...prev,
       kategori: val,
-      // If Aksesoris, lock kondisi to 'Baru'
-      kondisi: val === 'Aksesoris' ? 'Baru' : prev.kondisi
+      // If Aksesoris or Sparepart, lock kondisi to 'Baru'
+      kondisi: (val === 'Aksesoris' || val === 'Sparepart') ? 'Baru' : prev.kondisi
     }));
   };
 
@@ -132,14 +164,14 @@ export const InventoryView = () => {
 
     const itemPayload = {
       ...formData,
-      hargaBeli: isEditing
-        ? (inventory.find(item => item.id === formData.id)?.hargaBeli || 0)
-        : 0,
+      hargaBeli: isOwner
+        ? (parseFloat(formData.hargaBeli) || 0)
+        : (isEditing ? (inventory.find(item => item.id === formData.id)?.hargaBeli || 0) : 0),
       hargaJual: parseFloat(formData.hargaJual) || 0,
       stok: parseInt(formData.stok) || 1,
-      warna: formData.kategori === 'Aksesoris' ? '-' : formData.warna,
-      rom: formData.kategori === 'Aksesoris' ? '-' : formData.rom,
-      batteryHealth: formData.kondisi === 'Bekas' ? parseInt(formData.batteryHealth) : null,
+      warna: (formData.kategori === 'Aksesoris' || formData.kategori === 'Sparepart') ? '-' : formData.warna,
+      rom: (formData.kategori === 'Aksesoris' || formData.kategori === 'Sparepart') ? '-' : formData.rom,
+      batteryHealth: null,
       garansiAsal: formData.kondisi === 'Bekas' ? formData.garansiAsal : null,
       garansiAktif: formData.kondisi === 'Bekas' ? (formData.garansiAktif === 'true' || formData.garansiAktif === true) : null,
       gradeFisik: formData.kondisi === 'Bekas' ? formData.gradeFisik : null,
@@ -177,6 +209,73 @@ export const InventoryView = () => {
     }).format(val);
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      'SKU',
+      'Barcode / IMEI',
+      'Model Produk',
+      'Warna',
+      'ROM',
+      'Kondisi',
+      'Stok',
+      ...(isOwner ? ['Harga Modal'] : []),
+      'Harga Jual',
+      'Atribut Tambahan'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    const finalExportItems = filteredInventory.filter(item => {
+      if (exportFilter === 'Semua') return true;
+      return item.kategori === exportFilter;
+    });
+
+    if (finalExportItems.length === 0) {
+      alert('Tidak ada data untuk diekspor pada kategori tersebut.');
+      return;
+    }
+
+    finalExportItems.forEach((item) => {
+      let specs = [];
+      if (item.kondisi === 'Bekas') {
+        if (item.batteryHealth) specs.push(`BH: ${item.batteryHealth}%`);
+        specs.push(`Garansi: ${item.garansiAsal || '-'} (${item.garansiAktif ? 'Aktif' : 'Habis'})`);
+        if (item.gradeFisik) specs.push(`Grade: ${item.gradeFisik}`);
+        if (item.minus) specs.push(`Minus: ${item.minus}`);
+      } else {
+        specs.push('Baru');
+      }
+      const specsString = specs.join('; ');
+
+      const row = [
+        `"${item.sku}"`,
+        `"${item.imei || '-'}"`,
+        `"${item.model}"`,
+        `"${item.warna || '-'}"`,
+        `"${item.rom || '-'}"`,
+        `"${item.kondisi}"`,
+        item.stok,
+        ...(isOwner ? [item.hargaBeli] : []),
+        item.hargaJual,
+        `"${specsString.replace(/"/g, '""')}"`
+      ];
+
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `stok-inventaris-izystore-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportModal(false);
+  };
+
   return (
     <div className="p-4 flex flex-col gap-6 text-left dark:text-slate-200">
       <div className="flex justify-between items-center bg-white dark:bg-slate-900 rounded-3xl border border-white/60 dark:border-slate-800/40 shadow-neo dark:shadow-neo-dark p-5 transition-all duration-300">
@@ -189,10 +288,16 @@ export const InventoryView = () => {
             Lihat daftar stok, kelola atribut khusus iPhone bekas, dan cetak label barcode.
           </p>
         </div>
-        <Button variant="green" onClick={handleOpenAdd} className="flex items-center gap-1.5 !rounded-xl">
-          <Plus size={14} strokeWidth={2.5} />
-          <span>Tambah Barang</span>
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="white" onClick={() => setShowExportModal(true)} className="flex items-center gap-1.5 !rounded-xl">
+            <Share2 size={14} strokeWidth={2.5} />
+            <span>Ekspor Excel</span>
+          </Button>
+          <Button variant="green" onClick={handleOpenAdd} className="flex items-center gap-1.5 !rounded-xl">
+            <Plus size={14} strokeWidth={2.5} />
+            <span>Tambah Barang</span>
+          </Button>
+        </div>
       </div>
 
       <Card
@@ -201,23 +306,39 @@ export const InventoryView = () => {
         bodyClassName="p-4 flex flex-col gap-4"
 
       >
-        {/* Search filter */}
-        <div className="w-full max-w-sm mb-2">
-          <Input
-            placeholder="Cari SKU, Model, Brand, IMEI..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            icon={Search}
-          />
+        {/* Search & Category filter */}
+        <div className="w-full flex flex-col md:flex-row gap-3 mb-2">
+          <div className="max-w-sm flex-1">
+            <Input
+              placeholder="Cari SKU, Model, Brand, IMEI..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              icon={Search}
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer w-full md:w-48"
+          >
+            <option value="Semua">Semua Kategori</option>
+            <option value="Gadget">Gadget</option>
+            <option value="Sparepart">Sparepart</option>
+            <option value="Aksesoris">Aksesoris</option>
+          </select>
         </div>
 
         {/* Table inventory list */}
         <Table
-          headers={['SKU / Barcode', 'Produk', 'Kondisi', 'Stok', 'Harga Jual', 'Atribut Tambahan', 'Aksi']}
-          rows={filteredInventory}
+          headers={
+            isOwner
+              ? ['SKU / Barcode', 'Produk', 'Kondisi', 'Stok', 'Harga Modal', 'Harga Jual', 'Atribut Tambahan', 'Aksi']
+              : ['SKU / Barcode', 'Produk', 'Kondisi', 'Stok', 'Harga Jual', 'Atribut Tambahan', 'Aksi']
+          }
+          rows={displayedInventory}
           renderRow={(product, index) => {
             const isAppleBekas = product.kondisi === 'Bekas';
-            
+
             return (
               <tr key={product.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 font-mono">
@@ -242,13 +363,18 @@ export const InventoryView = () => {
                   {product.stok}
                 </td>
 
+                {isOwner && (
+                  <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 font-extrabold font-mono text-sm text-slate-800 dark:text-slate-100">
+                    {handleFormatRupiah(product.hargaBeli)}
+                  </td>
+                )}
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 font-extrabold font-mono text-sm text-slate-800 dark:text-slate-100">
                   {handleFormatRupiah(product.hargaJual)}
                 </td>
                 <td className="px-4 py-3.5 border-r border-slate-100/50 dark:border-slate-800/30 text-[10px] max-w-[200px]">
                   {product.kondisi === 'Bekas' ? (
                     <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-400">
-                      {<div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>}
+                      {product.batteryHealth && <div>BH: <span className="font-bold text-slate-800 dark:text-slate-200">{product.batteryHealth}%</span></div>}
                       <div>Garansi: <span className="font-bold text-slate-800 dark:text-slate-200">{product.garansiAsal || '-'} ({product.garansiAktif ? 'Aktif' : 'Habis'})</span></div>
                       <div>Fisik Grade: <span className="font-bold text-slate-800 dark:text-slate-200">{product.gradeFisik || '-'}</span></div>
                       <div>Minus: <span className="font-bold text-red-600 dark:text-red-400">{product.minus || 'Mulus (No Minus)'}</span></div>
@@ -290,6 +416,46 @@ export const InventoryView = () => {
             );
           }}
         />
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/40 mt-2">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+              Menampilkan {Math.min((activePage - 1) * itemsPerPage + 1, filteredInventory.length)} - {Math.min(activePage * itemsPerPage, filteredInventory.length)} dari {filteredInventory.length} barang
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase tracking-wider rounded-xl border border-slate-200/40 dark:border-slate-700/50 hover:bg-slate-200/70 dark:hover:bg-slate-750 transition-all cursor-pointer"
+              >
+                Sebelumnya
+              </button>
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`
+                    w-7 h-7 flex items-center justify-center text-[10px] font-black rounded-xl border transition-all cursor-pointer
+                    ${activePage === page
+                      ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 border-transparent shadow-sm'
+                      : 'bg-slate-550 dark:bg-slate-800 text-slate-550 dark:text-slate-400 border-slate-200/40 dark:border-slate-700/50 hover:scale-105 active:scale-95'
+                    }
+                  `}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase tracking-wider rounded-xl border border-slate-200/40 dark:border-slate-700/50 hover:bg-slate-200/70 dark:hover:bg-slate-750 transition-all cursor-pointer"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* MODAL 1: ADD / EDIT PRODUCT */}
@@ -300,7 +466,7 @@ export const InventoryView = () => {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
-          
+
           <div className="grid grid-cols-2 gap-3">
             {/* Kategori Select */}
             <div className="flex flex-col gap-1 text-left">
@@ -311,7 +477,8 @@ export const InventoryView = () => {
                 className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
               >
                 <option value="Gadget">Gadget</option>
-                <option value="Aksesoris">Aksesoris / Sparepart</option>
+                <option value="Aksesoris">Aksesoris</option>
+                <option value="Sparepart">Sparepart</option>
               </select>
             </div>
 
@@ -320,7 +487,7 @@ export const InventoryView = () => {
               <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Kondisi Barang</label>
               <select
                 value={formData.kondisi}
-                disabled={formData.kategori === 'Aksesoris'}
+                disabled={formData.kategori === 'Aksesoris' || formData.kategori === 'Sparepart'}
                 onChange={(e) => setFormData({ ...formData, kondisi: e.target.value })}
                 className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -356,15 +523,25 @@ export const InventoryView = () => {
             </div>
           )}
 
-            <Input
-              label="Kode Barcode / Batch Supplier"
-              placeholder="Contoh: a1-64-11\64-7"
-              value={formData.imei}
-              onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
-              required
-            />
+          <Input
+            label="Kode Barcode / Batch Supplier"
+            placeholder="Contoh: a1-64-11-64-7"
+            value={formData.imei}
+            onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
+            required
+          />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${isOwner ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+            {isOwner && (
+              <Input
+                label="Harga Modal (Rp)"
+                type="number"
+                placeholder="Harga beli supplier"
+                value={formData.hargaBeli}
+                onChange={(e) => setFormData({ ...formData, hargaBeli: e.target.value })}
+                required
+              />
+            )}
             <Input
               label="Harga Jual (Rp)"
               type="number"
@@ -389,56 +566,46 @@ export const InventoryView = () => {
                 Spesifikasi Kondisi Bekas (iPhone Spec)
               </span>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1 text-left">
                   <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Garansi Asal</label>
                   <select
                     value={formData.garansiAsal}
                     onChange={(e) => setFormData({ ...formData, garansiAsal: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
                   >
                     <option value="iBox">iBox / Resmi Indonesia</option>
                     <option value="Inter">Inter / Internasional</option>
                   </select>
                 </div>
-                
+
                 <div className="flex flex-col gap-1 text-left">
                   <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Status Garansi Asal</label>
                   <select
                     value={formData.garansiAktif}
                     onChange={(e) => setFormData({ ...formData, garansiAktif: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
                   >
                     <option value={true}>Aktif / Masih Garansi</option>
                     <option value={false}>Tidak Aktif / Habis</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1 text-left">
                   <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Grade Kemulusan Fisik</label>
                   <select
                     value={formData.gradeFisik}
                     onChange={(e) => setFormData({ ...formData, gradeFisik: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                    className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
                   >
                     <option value="A">Grade A (Mulus Like New)</option>
                     <option value="B">Grade B (Normal / Wajar)</option>
                     <option value="C">Grade C (Lecet / Minus Fisik)</option>
                   </select>
                 </div>
-                
-                  <Input
-                    label="Battery Health (%)"
-                    type="number"
-                    value={formData.batteryHealth}
-                    onChange={(e) => setFormData({ ...formData, batteryHealth: e.target.value })}
-                    placeholder="85"
-                  />
               </div>
 
-              <div className="mt-2.5">
+              <div className="mt-1">
                 <Input
                   label="Catatan Minus / Kerusakan Staf"
                   placeholder="Contoh: TrueTone Off, Layar gores tipis, FaceID Off (kosongkan jika mulus)"
@@ -480,12 +647,12 @@ export const InventoryView = () => {
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">
                 {barcodeProduct.warna} • {barcodeProduct.kondisi}
               </span>
-              
+
               {/* Fake Barcode Graphic */}
               <div className="w-[180px] h-[55px] border border-slate-200 dark:border-slate-800/60 rounded-xl flex items-center justify-center p-1 bg-white dark:bg-slate-900 my-3 gap-[1px] overflow-hidden">
                 {[2, 1, 3, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 2, 4, 1, 3, 2, 1].map((width, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="h-full bg-slate-800 dark:bg-slate-200"
                     style={{ width: `${width}px` }}
                   />
@@ -515,6 +682,34 @@ export const InventoryView = () => {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* MODAL 3: EXPORT MODAL */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Ekspor Data Stok"
+        maxWidth="max-w-xs"
+      >
+        <div className="flex flex-col gap-4 text-left">
+          <div className="flex flex-col gap-1 text-left">
+            <label className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 pl-1">Pilih Kategori Ekspor</label>
+            <select
+              value={exportFilter}
+              onChange={(e) => setExportFilter(e.target.value)}
+              className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+            >
+              <option value="Semua">Semua Kategori</option>
+              <option value="Gadget">Gadget</option>
+              <option value="Sparepart">Sparepart</option>
+              <option value="Aksesoris">Aksesoris</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="white" onClick={() => setShowExportModal(false)}>Batal</Button>
+            <Button variant="green" onClick={handleExportCSV}>Unduh Excel</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -34,6 +34,7 @@ export const ServisView = () => {
 
   // Selected Sparepart State
   const [selectedSparepartId, setSelectedSparepartId] = useState('');
+  const [sparepartSearchQuery, setSparepartSearchQuery] = useState('');
   const [sparepartQty, setSparepartQty] = useState('1');
   const [usedSpareparts, setUsedSpareparts] = useState([]);
 
@@ -52,10 +53,18 @@ export const ServisView = () => {
   const [splitMethod2, setSplitMethod2] = useState('Transfer Bank');
   const [splitAmount2, setSplitAmount2] = useState('');
 
-  // Filter Spareparts (items with kategori === 'Aksesoris' and stock > 0)
+  // Filter Spareparts (items with kategori === 'Aksesoris' or 'Sparepart' and stock > 0)
   const availableSpareparts = inventory.filter(
-    (item) => item.kategori === 'Aksesoris' && item.stok > 0
+    (item) => (item.kategori === 'Aksesoris' || item.kategori === 'Sparepart') && item.stok > 0
   );
+
+  const sparepartSearchResults = sparepartSearchQuery.trim()
+    ? availableSpareparts.filter(
+        (item) =>
+          item.model.toLowerCase().includes(sparepartSearchQuery.toLowerCase()) ||
+          (item.sku && item.sku.toLowerCase().includes(sparepartSearchQuery.toLowerCase()))
+      )
+    : [];
 
   const handleAddSparepart = (e) => {
     e.preventDefault();
@@ -101,13 +110,14 @@ export const ServisView = () => {
           hargaJual: sparepartObj.hargaJual,
           qty: qtyVal,
           imei: sparepartObj.imei,
-          kategori: 'Aksesoris'
+          kategori: sparepartObj.kategori
         }
       ]);
     }
 
     // Reset input
     setSelectedSparepartId('');
+    setSparepartSearchQuery('');
     setSparepartQty('1');
   };
 
@@ -313,23 +323,48 @@ export const ServisView = () => {
           </Card>
 
           {/* Card 2: Spareparts Selection */}
-          <Card title="2. Penggunaan Sparepart / Aksesoris" headerBg="bg-orange-100/70" bodyClassName="p-4 flex flex-col gap-4">
+          <Card title="2. Penggunaan Sparepart / Aksesoris" headerBg="bg-orange-100/70" bodyClassName="p-4 flex flex-col gap-4" className="!overflow-visible z-40">
             <div className="flex flex-col md:flex-row gap-3 items-end">
               
-              <div className="flex-1 flex flex-col gap-1 text-left">
-                <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">Pilih Sparepart / Aksesoris</label>
-                <select
-                  value={selectedSparepartId}
-                  onChange={(e) => setSelectedSparepartId(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-amber-100 dark:focus:ring-amber-950/50 outline-none transition-all duration-200 cursor-pointer"
-                >
-                  <option value="">-- Pilih Suku Cadang di Stok --</option>
-                  {availableSpareparts.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.model} ({p.warna}) - {handleFormatRupiah(p.hargaJual)} [Stok: {p.stok}]
-                    </option>
-                  ))}
-                </select>
+              <div className="flex-1 flex flex-col gap-1 text-left relative">
+                <Input
+                  label="Pilih Sparepart / Aksesoris"
+                  placeholder="Ketik nama sparepart atau SKU..."
+                  value={sparepartSearchQuery}
+                  onChange={(e) => {
+                    setSparepartSearchQuery(e.target.value);
+                    if (selectedSparepartId) setSelectedSparepartId('');
+                  }}
+                />
+                {sparepartSearchResults.length > 0 && !selectedSparepartId && (
+                  <div className="absolute top-[62px] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-neo dark:shadow-neo-dark z-50 max-h-48 overflow-y-auto flex flex-col p-1 gap-1">
+                    {sparepartSearchResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSparepartId(p.id);
+                          setSparepartSearchQuery(p.model);
+                        }}
+                        className="w-full text-left px-3.5 py-2 rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 flex justify-between items-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                      >
+                        <div>
+                          <span className="block font-extrabold text-slate-800 dark:text-slate-100">{p.model}</span>
+                          <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono">SKU: {p.sku}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-slate-800 dark:text-slate-100 font-mono">{handleFormatRupiah(p.hargaJual)}</span>
+                          <span className="text-[10px] text-slate-450 dark:text-slate-500">Stok: {p.stok} unit</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {sparepartSearchQuery && sparepartSearchResults.length === 0 && !selectedSparepartId && (
+                  <div className="text-[10px] font-bold text-red-500 dark:text-red-400 pl-1 mt-0.5">
+                    Sparepart tidak ditemukan.
+                  </div>
+                )}
               </div>
 
               <div className="w-full md:w-28">
@@ -488,8 +523,8 @@ export const ServisView = () => {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Metode Pembayaran</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {['Tunai', 'Transfer Bank'].map((method) => (
                     <button
                       key={method}
                       type="button"
@@ -505,6 +540,33 @@ export const ServisView = () => {
                       {method}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Paylater Menu */}
+              <div className="flex flex-col gap-1 mt-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Paylater</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Indodana', 'Kredivo', 'Spaylater', 'Akulaku'].map((provider) => {
+                    const paylaterMethod = `Paylater - ${provider}`;
+                    const isSelected = paymentMethod === paylaterMethod;
+                    return (
+                      <button
+                        key={provider}
+                        type="button"
+                        onClick={() => setPaymentMethod(paylaterMethod)}
+                        className={`
+                          px-1 py-2.5 text-center rounded-xl border border-transparent font-extrabold uppercase text-[8px] tracking-wider transition-all duration-200 cursor-pointer
+                          ${isSelected 
+                            ? 'bg-slate-800 dark:bg-orange-500 text-white shadow-sm' 
+                            : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-350 hover:scale-105 active:scale-95'
+                          }
+                        `}
+                      >
+                        {provider}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -528,9 +590,14 @@ export const ServisView = () => {
                 </div>
               ) : (
                 <div className="border border-dashed border-slate-200 dark:border-slate-800/60 rounded-2xl bg-slate-50/60 dark:bg-slate-950/30 p-5 text-center">
-                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">GESEK EDC / TRANSFER BANK</span>
+                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">
+                    {paymentMethod.startsWith('Paylater') ? `Simulasi Paylater (${paymentMethod.replace('Paylater - ', '')})` : 'GESEK EDC / TRANSFER BANK'}
+                  </span>
                   <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                    Silakan gunakan mesin EDC toko atau minta pelanggan melakukan transfer bank untuk melunasi biaya servis ini.
+                    {paymentMethod.startsWith('Paylater')
+                      ? `Silakan lakukan proses pengajuan limit/transaksi melalui aplikasi ${paymentMethod.replace('Paylater - ', '')} pelanggan. Transaksi akan tercatat setelah menekan tombol "Selesaikan Transaksi".`
+                      : 'Silakan gunakan mesin EDC toko atau minta pelanggan melakukan transfer bank untuk melunasi biaya servis ini.'
+                    }
                   </p>
                 </div>
               )}
@@ -546,9 +613,9 @@ export const ServisView = () => {
                   <select
                     value={splitMethod1}
                     onChange={(e) => setSplitMethod1(e.target.value)}
-                    className="border border-slate-200 dark:border-slate-850 rounded-xl px-2 py-1.5 text-xs font-bold bg-white dark:bg-slate-900"
+                    className="border border-slate-200 dark:border-slate-855 rounded-xl px-2 py-1.5 text-xs font-bold bg-white dark:bg-slate-900"
                   >
-                    {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((m) => (
+                    {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
@@ -569,9 +636,9 @@ export const ServisView = () => {
                   <select
                     value={splitMethod2}
                     onChange={(e) => setSplitMethod2(e.target.value)}
-                    className="border border-slate-200 dark:border-slate-850 rounded-xl px-2 py-1.5 text-xs font-bold bg-white dark:bg-slate-900"
+                    className="border border-slate-200 dark:border-slate-855 rounded-xl px-2 py-1.5 text-xs font-bold bg-white dark:bg-slate-900"
                   >
-                    {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((m) => (
+                    {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>

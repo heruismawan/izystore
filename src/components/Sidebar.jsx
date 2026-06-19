@@ -66,7 +66,7 @@ export const Sidebar = ({ activeView, setActiveView }) => {
       id: 'reports',
       label: 'Laporan Keuangan',
       icon: TrendingUp,
-      allowedRoles: ['admin', 'owner'],
+      allowedRoles: ['owner'],
       color: 'hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-950/20'
     },
     {

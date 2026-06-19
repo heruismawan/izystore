@@ -34,7 +34,8 @@ export const POSView = () => {
     addToCart,
     removeFromCart,
     updateCartItemImei,
-    salespersons,
+    salespersons = [],
+    helpers = [],
     pendingTransactions,
     holdTransaction,
     resumeTransaction,
@@ -42,6 +43,12 @@ export const POSView = () => {
     completeTransaction,
     currentUser
   } = useApp();
+
+  // Combine salespersons and helpers
+  const allEmployeesMap = {};
+  salespersons.forEach((s) => { if (s && s.name) allEmployeesMap[s.name] = s; });
+  helpers.forEach((h) => { if (h && h.name) allEmployeesMap[h.name] = h; });
+  const allEmployees = Object.values(allEmployeesMap);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,8 +58,10 @@ export const POSView = () => {
 
 
   // Cart / Payment States
-  const [selectedSales, setSelectedSales] = useState('');
-  const [salesRole, setSalesRole] = useState('Sales'); // 'Sales' or 'Helper'
+  const [checkoutForm, setCheckoutForm] = useState({
+    salesperson: '',
+    helper: ''
+  });
   const [discountInput, setDiscountInput] = useState('');
   const [isDiscountAuthorized, setIsDiscountAuthorized] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -61,7 +70,7 @@ export const POSView = () => {
 
   // Payment Modal States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('Tunai'); // 'Tunai', 'QRIS', 'Transfer Bank', 'Kartu Kredit', 'Paylater'
+  const [paymentMethod, setPaymentMethod] = useState('Tunai'); // 'Tunai', 'QRIS', 'Transfer Bank', 'Paylater'
   const [cashReceived, setCashReceived] = useState('');
   const [receiptData, setReceiptData] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -122,14 +131,9 @@ export const POSView = () => {
   };
 
   const handleHoldCart = () => {
-    if (!selectedSales) {
-      alert('Silakan pilih salesperson (karyawan) terlebih dahulu.');
-      return;
-    }
-    const res = holdTransaction(selectedSales, salesRole);
+    const res = holdTransaction(checkoutForm.salesperson, 'Sales');
     if (res.success) {
-      setSelectedSales('');
-      setSalesRole('Sales');
+      setCheckoutForm({ salesperson: '', helper: '' });
       setDiscountInput('');
       setIsDiscountAuthorized(false);
       alert('Transaksi berhasil ditunda (Hold).');
@@ -155,10 +159,6 @@ export const POSView = () => {
       return;
     }
 
-    if (!selectedSales) {
-      alert('Silakan pilih Salesperson terlebih dahulu.');
-      return;
-    }
     // Check authorization for discount > 100k
     if (discountVal > 100000 && !isDiscountAuthorized) {
       setShowPinModal(true);
@@ -207,8 +207,9 @@ export const POSView = () => {
 
     const res = completeTransaction({
       items: itemsWithPhysicalImei,
-      salesperson: selectedSales,
-      salespersonRole: salesRole,
+      salesperson: checkoutForm.salesperson,
+      helper: checkoutForm.helper,
+      salespersonRole: 'Sales',
       discount: discountVal,
       total,
       paymentMethod: payMethodName,
@@ -223,6 +224,7 @@ export const POSView = () => {
         invoiceNo: res.invoiceNo,
         items: res.transaction.items,
         salesperson: res.transaction.salesperson,
+        helper: res.transaction.helper,
         salespersonRole: res.transaction.salespersonRole,
         discount: res.transaction.discount,
         subtotal,
@@ -239,8 +241,7 @@ export const POSView = () => {
       setShowReceiptModal(true);
       
       // Reset POS form
-      setSelectedSales('');
-      setSalesRole('Sales');
+      setCheckoutForm({ salesperson: '', helper: '' });
       setDiscountInput('');
       setIsDiscountAuthorized(false);
       setIsSplit(false);
@@ -398,10 +399,12 @@ export const POSView = () => {
                         {/* Condition Specific Badges (Bekas) */}
                         {product.kondisi === 'Bekas' && (
                           <div className="flex flex-wrap gap-1 md:gap-1.5 mt-2 md:mt-2.5 pt-1.5 md:pt-2 border-t border-slate-100/40 dark:border-slate-800/40">
-                            <span className="inline-flex items-center gap-1 text-[7px] md:text-[8px] bg-amber-50 dark:bg-amber-950/30 border border-amber-200/30 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-extrabold px-1.5 md:px-2 py-0.5 rounded-md md:rounded-lg">
-                              <Battery size={7} className="text-amber-500 md:w-2 md:h-2" />
-                              <span>BH {product.batteryHealth}%</span>
-                            </span>
+                            {product.batteryHealth && (
+                              <span className="inline-flex items-center gap-1 text-[7px] md:text-[8px] bg-amber-50 dark:bg-amber-950/30 border border-amber-200/30 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-extrabold px-1.5 md:px-2 py-0.5 rounded-md md:rounded-lg">
+                                <Battery size={7} className="text-amber-500 md:w-2 md:h-2" />
+                                <span>BH {product.batteryHealth}%</span>
+                              </span>
+                            )}
                             <span className="inline-flex items-center gap-1 text-[7px] md:text-[8px] bg-blue-50 dark:bg-blue-950/30 border border-blue-200/30 dark:border-blue-900/30 text-blue-700 dark:text-blue-400 font-extrabold px-1.5 md:px-2 py-0.5 rounded-md md:rounded-lg">
                               <Award size={7} className="text-blue-500 md:w-2 md:h-2" />
                               <span>Grade {product.gradeFisik}</span>
@@ -528,53 +531,6 @@ export const POSView = () => {
 
           {/* Cart Footer: Inputs, Totals & Checkout */}
           <div className="border-t border-slate-100 dark:border-slate-800/40 pt-4 bg-white dark:bg-slate-900 flex flex-col gap-3 transition-all">
-            {/* Salesperson Picker */}
-            <div className="flex flex-col gap-1 text-left">
-              <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
-                Sales Melayani
-              </label>
-              <select
-                value={selectedSales}
-                onChange={(e) => setSelectedSales(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200"
-              >
-                <option value="">-- Pilih Sales (Karyawan) --</option>
-                {salespersons.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Peran Melayani (Sales / Helper) */}
-            <div className="flex flex-col gap-1 text-left">
-              <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
-                Peran Melayani
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'Sales', label: 'Sales' },
-                  { value: 'Helper', label: 'Helper' }
-                ].map((role) => (
-                  <button
-                    key={role.value}
-                    type="button"
-                    onClick={() => setSalesRole(role.value)}
-                    className={`
-                      px-3 py-2 text-center rounded-xl border border-transparent font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer
-                      ${salesRole === role.value 
-                        ? 'bg-slate-800 text-white dark:text-slate-950 shadow-sm' 
-                        : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'
-                      }
-                    `}
-                  >
-                    {role.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Discount Manual */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">
@@ -603,6 +559,41 @@ export const POSView = () => {
                   </Button>
                 </div>
               )}
+            </div>
+
+            {/* Employee Split Commission Selection */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
+                  Sales (Opsional)
+                </label>
+                <select
+                  value={checkoutForm.salesperson}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, salesperson: e.target.value })}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-850 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+                >
+                  <option value="">-- Pilih Sales --</option>
+                  {allEmployees.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
+                  Helper (Opsional)
+                </label>
+                <select
+                  value={checkoutForm.helper}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, helper: e.target.value })}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-855 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+                >
+                  <option value="">-- Pilih Helper --</option>
+                  {allEmployees.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Summaries */}
@@ -802,8 +793,8 @@ export const POSView = () => {
               {/* Payment Method Tabs */}
               <div className="flex flex-col gap-1">
                 <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Metode Pembayaran</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {['Tunai', 'Transfer Bank'].map((method) => (
                     <button
                       key={method}
                       onClick={() => setPaymentMethod(method)}
@@ -818,6 +809,33 @@ export const POSView = () => {
                       {method}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Paylater Menu */}
+              <div className="flex flex-col gap-1 mt-1.5">
+                <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Paylater</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Indodana', 'Kredivo', 'Spaylater', 'Akulaku'].map((provider) => {
+                    const paylaterMethod = `Paylater - ${provider}`;
+                    const isSelected = paymentMethod === paylaterMethod;
+                    return (
+                      <button
+                        key={provider}
+                        type="button"
+                        onClick={() => setPaymentMethod(paylaterMethod)}
+                        className={`
+                          px-1 py-2.5 text-center rounded-xl border border-transparent font-extrabold uppercase text-[8px] tracking-wider transition-all duration-200 cursor-pointer
+                          ${isSelected 
+                            ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 shadow-sm' 
+                            : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'
+                          }
+                        `}
+                      >
+                        {provider}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -865,9 +883,14 @@ export const POSView = () => {
                 </div>
               ) : (
                 <div className="border border-dashed border-slate-200 dark:border-slate-800/60 rounded-2xl bg-slate-50/60 dark:bg-slate-950/20 p-6 text-center">
-                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">SIMULASI TRANSFER BANK / KARTU</span>
+                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">
+                    {paymentMethod.startsWith('Paylater') ? `Simulasi Paylater (${paymentMethod.replace('Paylater - ', '')})` : 'SIMULASI TRANSFER BANK / KARTU'}
+                  </span>
                   <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-450 mt-2 leading-relaxed">
-                    Lakukan transfer bank atau gesek kartu ke EDC toko. Pembayaran akan terverifikasi secara otomatis setelah menekan tombol "Proses Transaksi".
+                    {paymentMethod.startsWith('Paylater')
+                      ? `Silakan lakukan proses pengajuan limit/transaksi melalui aplikasi ${paymentMethod.replace('Paylater - ', '')} pelanggan. Transaksi akan tercatat setelah menekan tombol "Proses Transaksi".`
+                      : 'Lakukan transfer bank atau gesek kartu ke EDC toko. Pembayaran akan terverifikasi secara otomatis setelah menekan tombol "Proses Transaksi".'
+                    }
                   </p>
                 </div>
               )}
@@ -884,7 +907,7 @@ export const POSView = () => {
                     onChange={(e) => setSplitMethod1(e.target.value)}
                     className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
                   >
-                    {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((m) => (
+                    {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
@@ -910,7 +933,7 @@ export const POSView = () => {
                     onChange={(e) => setSplitMethod2(e.target.value)}
                     className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
                   >
-                    {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((m) => (
+                    {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
@@ -951,14 +974,14 @@ export const POSView = () => {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-4 border-t border-slate-50 dark:border-slate-800/40 pt-3">
-            <Button variant="white" onClick={() => setShowPaymentModal(false)}>
-              Batal
-            </Button>
-            <Button variant="green" onClick={handleCheckout}>
-              Proses Transaksi
-            </Button>
-          </div>
+            <div className="flex justify-end gap-2 mt-4 border-t border-slate-50 dark:border-slate-800/40 pt-3">
+              <Button variant="white" onClick={() => setShowPaymentModal(false)}>
+                Batal
+              </Button>
+              <Button variant="green" onClick={handleCheckout}>
+                Proses Transaksi
+              </Button>
+            </div>
         </div>
       </Modal>
 
@@ -997,9 +1020,17 @@ export const POSView = () => {
               <div className="flex justify-between">
                 <span>Sales:</span>
                 <span className="font-bold text-slate-700 dark:text-slate-200">
-                  {receiptData?.salesperson} {receiptData?.salespersonRole ? `(${receiptData.salespersonRole})` : ''}
+                  {receiptData?.salesperson || '-'}
                 </span>
               </div>
+              {receiptData?.helper && (
+                <div className="flex justify-between">
+                  <span>Helper:</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    {receiptData.helper}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-b border-dashed border-slate-200 dark:border-slate-800/40 py-2 flex flex-col gap-2">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -6,15 +6,23 @@ import Input from '../components/Input';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import logoImg from '../assets/logo.png';
-import { Search, Eye, FileText, Printer, Share2 } from 'lucide-react';
+import { Search, Eye, FileText, Printer, Share2, Calendar, X } from 'lucide-react';
 
 export const TransactionsView = () => {
   const { transactions, salespersons, currentUser } = useApp();
+  const isOwner = currentUser.role === 'owner';
   
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMethod, setSelectedMethod] = useState('Semua');
   const [selectedSalesperson, setSelectedSalesperson] = useState('Semua');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, startDate, endDate, selectedSalesperson]);
 
   // Detail Modal state
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -42,16 +50,51 @@ export const TransactionsView = () => {
           (item.barcode && item.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
       );
 
-    const matchesMethod = 
-      selectedMethod === 'Semua' || 
-      tx.paymentMethod === selectedMethod;
-
     const matchesSalesperson = 
       selectedSalesperson === 'Semua' || 
       tx.salesperson === selectedSalesperson;
 
-    return matchesSearch && matchesMethod && matchesSalesperson;
+    // Filter by date range (local time comparison)
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const txLocalDate = new Date(tx.date);
+      const year = txLocalDate.getFullYear();
+      const month = String(txLocalDate.getMonth() + 1).padStart(2, '0');
+      const day = String(txLocalDate.getDate()).padStart(2, '0');
+      const txDateStr = `${year}-${month}-${day}`;
+      
+      if (startDate && txDateStr < startDate) {
+        matchesDate = false;
+      }
+      if (endDate && txDateStr > endDate) {
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesSalesperson && matchesDate;
   });
+
+  const totalPages = Math.ceil(filteredTx.length / itemsPerPage);
+  const activePage = Math.min(currentPage, totalPages || 1);
+  const displayedTx = filteredTx.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, activePage - 2);
+      let end = Math.min(totalPages, activePage + 2);
+      if (start === 1) {
+        end = 5;
+      } else if (end === totalPages) {
+        start = totalPages - 4;
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   const handleOpenDetail = (tx) => {
     setActiveTx(tx);
@@ -66,10 +109,15 @@ export const TransactionsView = () => {
     const headers = [
       'No Invoice',
       'Tanggal Transaksi',
+      'Jenis Transaksi',
       'Karyawan (Sales)',
+      'Helper',
       'Peran',
       'Item Produk',
       'Kode Barcode',
+      'Item Tukar Tambah',
+      'Taksiran Harga Tukar Tambah',
+      ...(isOwner ? ['Modal', 'Harga Jual'] : []),
       'Total Bayar',
       'Metode Pembayaran'
     ];
@@ -85,13 +133,24 @@ export const TransactionsView = () => {
         .map((item) => item.barcode || item.imei || '-')
         .join('; ');
 
+      const tradeInModel = tx.tradeInDetails ? tx.tradeInDetails.model : '-';
+      const tradeInTaksiran = tx.tradeInDetails ? tx.tradeInDetails.taksiranHarga : 0;
+
+      const totalModal = tx.items.reduce((acc, item) => acc + (item.hargaBeli || 0) * item.qty, 0);
+      const totalHargaJual = tx.items.reduce((acc, item) => acc + (item.hargaJual || 0) * item.qty, 0);
+
       const row = [
         `"${tx.invoiceNo}"`,
         `"${new Date(tx.date).toLocaleString('id-ID')}"`,
+        `"${tx.type || 'Penjualan'}"`,
         `"${tx.salesperson}"`,
+        `"${tx.helper || '-'}"`,
         `"${tx.salespersonRole || '-'}"`,
         `"${itemsString.replace(/"/g, '""')}"`,
         `"${barcodesString.replace(/"/g, '""')}"`,
+        `"${tradeInModel.replace(/"/g, '""')}"`,
+        tradeInTaksiran,
+        ...(isOwner ? [totalModal, totalHargaJual] : []),
         tx.total,
         `"${tx.paymentMethod}"`
       ];
@@ -134,43 +193,60 @@ export const TransactionsView = () => {
         title="Daftar Nota / Invoice Transaksi"
         headerBg="bg-orange-100/70"
         bodyClassName="p-4 flex flex-col gap-4"
-        headerAction={
-          <div className="flex gap-2 w-full overflow-x-auto scrollbar-none pb-0.5">
-            {['Semua', 'Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
-              <button
-                key={method}
-                onClick={() => setSelectedMethod(method)}
-                className={`
-                  px-3 py-1.5 rounded-xl font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer border border-transparent shrink-0
-                  ${selectedMethod === method 
-                    ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 shadow-sm' 
-                    : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'
-                  }
-                `}
-              >
-                {method}
-              </button>
-            ))}
-          </div>
-        }
       >
         {/* Filter Bar */}
-        <div className="flex flex-col md:flex-row gap-3 items-center justify-between mb-2">
-          <div className="w-full md:max-w-sm">
+        <div className="flex flex-col lg:flex-row gap-4 items-end justify-between mb-4 border-b border-slate-100 dark:border-slate-800/30 pb-4">
+          <div className="w-full lg:max-w-xs">
             <Input
-              placeholder="Cari No Invoice, Sales, Produk, IMEI, Barcode..."
+              label="Cari Nota"
+              placeholder="No Invoice, Sales, Produk, IMEI, Barcode..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               icon={Search}
             />
           </div>
           
-          <div className="w-full md:w-auto flex items-center gap-2">
-            <span className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">Filter Sales:</span>
+          <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-3 items-end">
+            <div className="w-full sm:w-44">
+              <Input
+                type="date"
+                label="Mulai Tanggal"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                icon={Calendar}
+                className="text-xs"
+              />
+            </div>
+            <div className="w-full sm:w-44">
+              <Input
+                type="date"
+                label="Sampai Tanggal"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                icon={Calendar}
+                className="text-xs"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="h-[43px] px-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200/50 dark:border-red-900/30 rounded-2xl hover:bg-red-100 dark:hover:bg-red-950/30 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-sm"
+                title="Hapus Filter Tanggal"
+              >
+                <X size={15} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+          
+          <div className="w-full lg:w-auto flex flex-col gap-1.5 text-left">
+            <span className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Filter Sales:</span>
             <select
               value={selectedSalesperson}
               onChange={(e) => setSelectedSalesperson(e.target.value)}
-              className="border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+              className="border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer h-[43px] min-w-[150px]"
             >
               <option value="Semua">Semua Sales</option>
               {salespersons.map((s) => (
@@ -183,12 +259,20 @@ export const TransactionsView = () => {
 
         {/* Transactions Table */}
         <Table
-          headers={['No Invoice', 'Tanggal Transaksi', 'Karyawan (Sales)', 'Item Produk', 'Kode Barcode', 'Total Bayar', 'Metode', 'Aksi']}
-          rows={filteredTx}
-          renderRow={(tx) => (
-            <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
-              <td className="px-4 py-3.5 font-mono">
-                <div className="font-extrabold text-slate-800 dark:text-slate-100">{tx.invoiceNo}</div>
+          headers={
+            isOwner
+              ? ['No Invoice', 'Tanggal Transaksi', 'Karyawan (Sales)', 'Item Produk', 'Kode Barcode', 'Modal', 'Harga Jual', 'Total Bayar', 'Metode', 'Aksi']
+              : ['No Invoice', 'Tanggal Transaksi', 'Karyawan (Sales)', 'Item Produk', 'Kode Barcode', 'Total Bayar', 'Metode', 'Aksi']
+          }
+          rows={displayedTx}
+          renderRow={(tx) => {
+            const totalModal = tx.items.reduce((acc, item) => acc + (item.hargaBeli || 0) * item.qty, 0);
+            const totalHargaJual = tx.items.reduce((acc, item) => acc + (item.hargaJual || 0) * item.qty, 0);
+
+            return (
+              <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-[10px] font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
+              <td className="px-2 py-2 font-mono">
+                <div className="font-extrabold text-[11px] text-slate-800 dark:text-slate-100">{tx.invoiceNo}</div>
                 <span className={`
                   text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border border-white/50 dark:border-slate-800/30 mt-1 inline-block shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.15)]
                   ${tx.type === 'Tukar Tambah' 
@@ -199,19 +283,19 @@ export const TransactionsView = () => {
                   {tx.type || 'Penjualan'}
                 </span>
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-2 py-2 text-[9px] leading-tight">
                 {new Date(tx.date).toLocaleString('id-ID')}
               </td>
-              <td className="px-4 py-3.5">
-                <div className="font-bold text-slate-800 dark:text-slate-100">{tx.salesperson}</div>
-                {tx.salespersonRole && (
-                  <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/40 mt-1 inline-block">
-                    {tx.salespersonRole}
-                  </span>
+              <td className="px-2 py-2">
+                <div className="font-bold text-slate-800 dark:text-slate-100">{tx.salesperson || '-'}</div>
+                {tx.helper && (
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Helper: <span className="font-bold">{tx.helper}</span>
+                  </div>
                 )}
               </td>
-              <td className="px-4 py-3.5 max-w-[200px]">
-                <div className="flex flex-col gap-1">
+              <td className="px-2 py-2 max-w-[150px]">
+                <div className="flex flex-col gap-0.5">
                   {tx.items.map((item, idx) => (
                     <div key={idx} className="border-b border-slate-50 dark:border-slate-800/30 pb-1 last:pb-0">
                       <span className="font-bold text-slate-700 dark:text-slate-200">{item.qty}x {item.model}</span>
@@ -219,15 +303,18 @@ export const TransactionsView = () => {
                     </div>
                   ))}
                   {tx.tradeInDetails && (
-                    <div className="mt-1 pt-1.5 border-t border-dashed border-slate-100 dark:border-slate-800/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-1.5 text-[9px] text-slate-600 dark:text-slate-400">
+                    <div className="mt-0.5 pt-1 border-t border-dashed border-slate-100 dark:border-slate-800/40 bg-blue-50/50 dark:bg-blue-950/20 rounded md p-1 text-[8px] text-slate-600 dark:text-slate-400">
                       <span className="font-black text-blue-600 dark:text-blue-400 block">HP LAMA DIRETUR:</span>
-                      <span>{tx.tradeInDetails.model} (IMEI: {tx.tradeInDetails.imei})</span>
+                      <div className="flex justify-between items-start mt-0.5">
+                        <span>{tx.tradeInDetails.model}</span>
+                        <span className="font-bold text-red-600 dark:text-red-400 whitespace-nowrap ml-1">-{handleFormatRupiah(tx.tradeInDetails.taksiranHarga)}</span>
+                      </div>
                     </div>
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3.5 font-mono">
-                <div className="flex flex-col gap-1">
+              <td className="px-2 py-2 font-mono">
+                <div className="flex flex-col gap-0.5">
                   {tx.items.map((item, idx) => (
                     <span key={idx} className="block text-[10px] text-slate-700 dark:text-slate-350 bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5 truncate max-w-[120px] font-bold" title={item.barcode || item.imei || '-'}>
                       {item.barcode || item.imei || '-'}
@@ -235,25 +322,76 @@ export const TransactionsView = () => {
                   ))}
                 </div>
               </td>
-              <td className="px-4 py-3.5 font-black font-mono text-slate-800 dark:text-slate-100">
+              {isOwner && (
+                <>
+                  <td className="px-2 py-2 font-bold font-mono text-red-600 dark:text-red-400">
+                    {handleFormatRupiah(totalModal)}
+                  </td>
+                  <td className="px-2 py-2 font-bold font-mono text-blue-600 dark:text-blue-400">
+                    {handleFormatRupiah(totalHargaJual)}
+                  </td>
+                </>
+              )}
+              <td className="px-2 py-2 font-black font-mono text-[11px] text-slate-800 dark:text-slate-100">
                 {handleFormatRupiah(tx.total)}
               </td>
-              <td className="px-4 py-3.5 text-center font-bold uppercase text-[9px]">
+              <td className="px-2 py-2 text-center font-bold uppercase text-[8px]">
                 {tx.paymentMethod}
               </td>
-              <td className="px-4 py-3.5 text-center">
+              <td className="px-2 py-2 text-center">
                 <button
                   onClick={() => handleOpenDetail(tx)}
                   title="Lihat Detail Nota"
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:text-orange-700 dark:hover:text-orange-400 hover:scale-105 active:scale-95 shadow-sm dark:shadow-none transition-all cursor-pointer flex items-center gap-1.5 mx-auto font-bold uppercase text-[9px]"
+                  className="px-2 py-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:text-orange-700 dark:hover:text-orange-400 hover:scale-105 active:scale-95 shadow-sm dark:shadow-none transition-all cursor-pointer flex items-center gap-1 mx-auto font-bold uppercase text-[8px]"
                 >
                   <Eye size={11} strokeWidth={2.5} />
                   <span>Detail</span>
                 </button>
               </td>
             </tr>
-          )}
+            );
+          }}
         />
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/40 mt-2">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+              Menampilkan {Math.min((activePage - 1) * itemsPerPage + 1, filteredTx.length)} - {Math.min(activePage * itemsPerPage, filteredTx.length)} dari {filteredTx.length} transaksi
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase tracking-wider rounded-xl border border-slate-200/40 dark:border-slate-700/50 hover:bg-slate-200/70 dark:hover:bg-slate-750 transition-all cursor-pointer"
+              >
+                Sebelumnya
+              </button>
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`
+                    w-7 h-7 flex items-center justify-center text-[10px] font-black rounded-xl border transition-all cursor-pointer
+                    ${activePage === page 
+                      ? 'bg-slate-800 dark:bg-orange-500 text-white dark:text-slate-950 border-transparent shadow-sm' 
+                      : 'bg-slate-550 dark:bg-slate-800 text-slate-550 dark:text-slate-400 border-slate-200/40 dark:border-slate-700/50 hover:scale-105 active:scale-95'
+                    }
+                  `}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase tracking-wider rounded-xl border border-slate-200/40 dark:border-slate-700/50 hover:bg-slate-200/70 dark:hover:bg-slate-750 transition-all cursor-pointer"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* DETAIL MODAL (Nota Struk Copy) */}
@@ -291,9 +429,17 @@ export const TransactionsView = () => {
                 <div className="flex justify-between">
                   <span>Sales:</span>
                   <span className="font-bold text-slate-700 dark:text-slate-200">
-                    {activeTx.salesperson} {activeTx.salespersonRole ? `(${activeTx.salespersonRole})` : ''}
+                    {activeTx.salesperson || '-'}
                   </span>
                 </div>
+                {activeTx.helper && (
+                  <div className="flex justify-between">
+                    <span>Helper:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {activeTx.helper}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Jenis:</span>
                   <span className="font-bold uppercase text-slate-700 dark:text-slate-200">{activeTx.type || 'Penjualan'}</span>
@@ -319,7 +465,6 @@ export const TransactionsView = () => {
                   <div className="mt-1 pt-1.5 border-t border-dotted border-slate-200 dark:border-slate-800/40 flex flex-col bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-2 text-[9px] text-slate-600 dark:text-slate-400">
                     <span className="font-black text-blue-600 dark:text-blue-400 block">TUKAR TAMBAH (HP DITERIMA TOKO):</span>
                     <span className="font-bold">{activeTx.tradeInDetails.model}</span>
-                    <span>IMEI: {activeTx.tradeInDetails.imei}</span>
                     <span className="font-bold text-right text-red-500 dark:text-red-400">-{handleFormatRupiah(activeTx.tradeInDetails.taksiranHarga)}</span>
                   </div>
                 )}

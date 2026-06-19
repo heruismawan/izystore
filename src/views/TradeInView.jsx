@@ -9,14 +9,22 @@ import { RefreshCw, Calculator, FileText } from 'lucide-react';
 export const TradeInView = () => {
   const {
     inventory,
-    salespersons,
+    salespersons = [],
+    helpers = [],
     completeTransaction
   } = useApp();
 
+  // Combine salespersons and helpers
+  const allEmployeesMap = {};
+  salespersons.forEach((s) => { if (s && s.name) allEmployeesMap[s.name] = s; });
+  helpers.forEach((h) => { if (h && h.name) allEmployeesMap[h.name] = h; });
+  const allEmployees = Object.values(allEmployeesMap);
+
   // Selected HP Baru (from inventory)
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [barcodeQuery, setBarcodeQuery] = useState('');
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [newDeviceImei, setNewDeviceImei] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   // HP Lama Specs
   const [oldModel, setOldModel] = useState('');
   const [oldWarna, setOldWarna] = useState('');
@@ -24,46 +32,34 @@ export const TradeInView = () => {
   const [oldMinus, setOldMinus] = useState('');
   const [taksiranHarga, setTaksiranHarga] = useState('');
 
-
-
   // Checkout States
-  const [selectedSales, setSelectedSales] = useState('');
-  const [salesRole, setSalesRole] = useState('Sales'); // 'Sales' or 'Helper'
+  const [checkoutForm, setCheckoutForm] = useState({
+    salesperson: '',
+    helper: ''
+  });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Tunai');
   const [cashReceived, setCashReceived] = useState('');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
 
-  const handleBarcodeSearchChange = (e) => {
-    const val = e.target.value;
-    setBarcodeQuery(val);
-    
-    // Find matching items (exact match case-insensitive for scan triggers)
-    const matches = inventory.filter(
-      (item) =>
-        item.kategori === 'Gadget' &&
-        item.kondisi === 'Baru' &&
-        item.stok > 0 &&
-        (item.imei?.toLowerCase() === val.trim().toLowerCase() ||
-         item.sku?.toLowerCase() === val.trim().toLowerCase())
-    );
-    
-    if (matches.length === 1) {
-      setSelectedProduct(matches[0].id);
-      setBarcodeQuery(''); // clear search input on match
-    }
-  };
+  // Split Payment States
+  const [isSplit, setIsSplit] = useState(false);
+  const [splitMethod1, setSplitMethod1] = useState('Tunai');
+  const [splitAmount1, setSplitAmount1] = useState('');
+  const [splitMethod2, setSplitMethod2] = useState('Transfer Bank');
+  const [splitAmount2, setSplitAmount2] = useState('');
 
-  // Search matching new gadgets
-  const searchResults = barcodeQuery.trim()
-    ? inventory.filter(
+  const availableGadgets = inventory.filter(
+    (item) => item.kategori === 'Gadget' && item.kondisi === 'Baru' && item.stok > 0
+  );
+
+  const searchResults = searchQuery.trim()
+    ? availableGadgets.filter(
         (item) =>
-          item.kategori === 'Gadget' &&
-          item.kondisi === 'Baru' &&
-          item.stok > 0 &&
-          (item.imei?.toLowerCase().includes(barcodeQuery.toLowerCase()) ||
-           item.sku?.toLowerCase().includes(barcodeQuery.toLowerCase()))
+          item.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.imei && item.imei.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : [];
 
@@ -87,25 +83,44 @@ export const TradeInView = () => {
       return;
     }
 
-    if (!selectedSales) {
-      alert('Silakan pilih Salesperson untuk komisi transaksi.');
-      return;
-    }
-
     setCashReceived(netDiff < 0 ? 0 : netDiff);
+    if (netDiff >= 0) {
+      setSplitAmount1(Math.round(netDiff / 2));
+      setSplitAmount2(netDiff - Math.round(netDiff / 2));
+    }
     setShowPaymentModal(true);
   };
 
   const handleProcessTradeIn = () => {
     let cash = parseFloat(cashReceived) || 0;
-    if (netDiff >= 0 && paymentMethod === 'Tunai' && cash < sisaBayar) {
-      alert('Uang yang diterima kurang dari sisa bayar!');
-      return;
+    
+    // Only validate cash if netDiff >= 0 (customer pays store)
+    if (netDiff >= 0) {
+      if (!isSplit && paymentMethod === 'Tunai' && cash < sisaBayar) {
+        alert('Uang yang diterima kurang dari sisa bayar!');
+        return;
+      }
+      if (isSplit) {
+        const sumAmount = (parseFloat(splitAmount1) || 0) + (parseFloat(splitAmount2) || 0);
+        if (sumAmount < sisaBayar) {
+          alert('Total nominal split payment kurang dari sisa bayar!');
+          return;
+        }
+        const hasCash = splitMethod1 === 'Tunai' || splitMethod2 === 'Tunai';
+        if (!hasCash && sumAmount !== sisaBayar) {
+          alert('Untuk non-tunai, jumlah nominal split payment harus pas dengan sisa bayar!');
+          return;
+        }
+      }
     }
 
     const change = netDiff >= 0
-      ? (paymentMethod === 'Tunai' ? Math.max(0, cash - sisaBayar) : 0)
+      ? (isSplit 
+          ? ((splitMethod1 === 'Tunai' || splitMethod2 === 'Tunai') ? Math.max(0, ((parseFloat(splitAmount1) || 0) + (parseFloat(splitAmount2) || 0)) - sisaBayar) : 0)
+          : (paymentMethod === 'Tunai' ? Math.max(0, cash - sisaBayar) : 0))
       : Math.abs(netDiff); // Store pays customer the difference
+
+    const payMethodName = netDiff < 0 ? 'Tunai (Toko Bayar Pelanggan)' : (isSplit ? `${splitMethod1} + ${splitMethod2}` : paymentMethod);
 
     // Compile Trade-In attributes
     const tradeInDetails = {
@@ -123,14 +138,17 @@ export const TradeInView = () => {
     };
 
     const res = completeTransaction({
-      items: [{ ...newProductObj, qty: 1 }], // Checkout 1 HP Baru
-      salesperson: selectedSales,
-      salespersonRole: salesRole,
+      items: [{ ...newProductObj, qty: 1, imei: newDeviceImei || newProductObj.imei }], // Checkout 1 HP Baru
+      salesperson: checkoutForm.salesperson,
+      helper: checkoutForm.helper,
+      salespersonRole: 'Sales',
       discount: 0,
       total: netDiff,
-      paymentMethod,
-      cashAmount: netDiff >= 0 ? (paymentMethod === 'Tunai' ? cash : sisaBayar) : 0,
+      paymentMethod: payMethodName,
+      cashAmount: netDiff >= 0 ? (isSplit ? ((splitMethod1 === 'Tunai' ? parseFloat(splitAmount1) : 0) + (splitMethod2 === 'Tunai' ? parseFloat(splitAmount2) : 0)) : (paymentMethod === 'Tunai' ? cash : sisaBayar)) : 0,
       changeAmount: change,
+      isSplitPayment: netDiff >= 0 && isSplit,
+      splitDetails: (netDiff >= 0 && isSplit) ? { method1: splitMethod1, amount1: parseFloat(splitAmount1), method2: splitMethod2, amount2: parseFloat(splitAmount2) } : null,
       tradeInDetails
     });
 
@@ -140,12 +158,15 @@ export const TradeInView = () => {
         date: res.transaction.date,
         newDevice: newProductObj,
         oldDevice: tradeInDetails,
-        salesperson: selectedSales,
+        salesperson: res.transaction.salesperson,
+        helper: res.transaction.helper,
         salespersonRole: res.transaction.salespersonRole,
         total: netDiff,
-        paymentMethod,
-        cashAmount: netDiff >= 0 ? (paymentMethod === 'Tunai' ? cash : sisaBayar) : 0,
-        changeAmount: change
+        paymentMethod: payMethodName,
+        cashAmount: netDiff >= 0 ? (isSplit ? ((splitMethod1 === 'Tunai' ? parseFloat(splitAmount1) : 0) + (splitMethod2 === 'Tunai' ? parseFloat(splitAmount2) : 0)) : (paymentMethod === 'Tunai' ? cash : sisaBayar)) : 0,
+        changeAmount: change,
+        isSplitPayment: netDiff >= 0 && isSplit,
+        splitDetails: (netDiff >= 0 && isSplit) ? { method1: splitMethod1, amount1: parseFloat(splitAmount1), method2: splitMethod2, amount2: parseFloat(splitAmount2) } : null
       });
 
       setShowPaymentModal(false);
@@ -153,13 +174,14 @@ export const TradeInView = () => {
 
       // Reset form
       setSelectedProduct('');
+      setNewDeviceImei('');
       setOldModel('');
       setOldWarna('');
       setOldRom('');
       setTaksiranHarga('');
+      setIsSplit(false);
 
-      setSelectedSales('');
-      setSalesRole('Sales');
+      setCheckoutForm({ salesperson: '', helper: '' });
       setOldMinus('');
     }
   };
@@ -190,14 +212,16 @@ export const TradeInView = () => {
         <div className="lg:col-span-8 flex flex-col gap-6">
           
           {/* Section 1: HP Baru yang Dibeli */}
-          <Card title="1. Pilih HP Baru Toko" headerBg="bg-orange-100/70" bodyClassName="p-4">
+          <Card title="1. Pilih HP Baru Toko" headerBg="bg-orange-100/70" bodyClassName="p-4" className="!overflow-visible z-50">
             {!selectedProduct ? (
               <div className="flex flex-col gap-1 relative">
                 <Input
-                  label="Scan Barcode / SKU HP Baru Toko *"
-                  placeholder="Scan barcode atau masukkan SKU..."
-                  value={barcodeQuery}
-                  onChange={handleBarcodeSearchChange}
+                  label="Cari HP Baru Toko *"
+                  placeholder="Ketik model HP, IMEI, atau SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                   autoFocus
                 />
                 {searchResults.length > 0 && (
@@ -208,12 +232,12 @@ export const TradeInView = () => {
                         type="button"
                         onClick={() => {
                           setSelectedProduct(p.id);
-                          setBarcodeQuery('');
+                          setSearchQuery('');
                         }}
                         className="w-full text-left px-3.5 py-2 rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 flex justify-between items-center font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                       >
                         <div>
-                          <span className="block font-extrabold text-slate-800 dark:text-slate-100">{p.model}</span>
+                          <span className="block font-extrabold text-slate-800 dark:text-slate-100">{p.model} ({p.warna} {p.rom})</span>
                           <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono">Barcode: {p.imei} • SKU: {p.sku}</span>
                         </div>
                         <div className="text-right">
@@ -224,9 +248,9 @@ export const TradeInView = () => {
                     ))}
                   </div>
                 )}
-                {barcodeQuery && searchResults.length === 0 && (
+                {searchQuery && searchResults.length === 0 && (
                   <div className="text-[10px] font-bold text-red-500 dark:text-red-400 pl-1 mt-0.5">
-                    Produk baru dengan barcode/SKU tersebut tidak ditemukan atau stok kosong.
+                    Produk tidak ditemukan.
                   </div>
                 )}
               </div>
@@ -248,7 +272,6 @@ export const TradeInView = () => {
                     type="button"
                     onClick={() => {
                       setSelectedProduct('');
-                      setBarcodeQuery('');
                     }}
                     className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-red-500 rounded-lg hover:scale-105 active:scale-95 transition-all text-[9px] font-extrabold uppercase tracking-wider cursor-pointer"
                   >
@@ -263,6 +286,18 @@ export const TradeInView = () => {
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Stok Tersedia (Inventory):</span>
                   <span className="text-slate-800 dark:text-slate-200">{newProductObj?.stok} unit</span>
+                </div>
+
+                <div className="border-t border-slate-100 dark:border-slate-850 pt-3 mt-1">
+                  <Input
+                    label="Input IMEI Fisik HP Baru"
+                    placeholder="Scan atau ketik IMEI HP yang akan diberikan..."
+                    value={newDeviceImei}
+                    onChange={(e) => setNewDeviceImei(e.target.value)}
+                  />
+                  <p className="text-[9.5px] text-slate-400 dark:text-slate-500 mt-1.5 leading-relaxed font-semibold">
+                    Isi kolom ini dengan nomor IMEI perangkat fisik yang akan diserahkan ke pelanggan. Jika dikosongkan, sistem akan menggunakan IMEI bawaan dari data stok.
+                  </p>
                 </div>
               </div>
             )}
@@ -352,58 +387,45 @@ export const TradeInView = () => {
               </div>
             </div>
 
-            {/* Sales Selector */}
-            <div className="flex flex-col gap-1 text-left">
-              <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
-                Sales Melayani
-              </label>
-              <select
-                value={selectedSales}
-                onChange={(e) => setSelectedSales(e.target.value)}
-                required
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200"
-              >
-                <option value="">-- Pilih Sales --</option>
-                {salespersons.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Employee Split Commission Selection */}
+            <div className="flex flex-col gap-2.5 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/40">
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
+                  Sales (Opsional)
+                </label>
+                <select
+                  value={checkoutForm.salesperson}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, salesperson: e.target.value })}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-855 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+                >
+                  <option value="">-- Pilih Sales --</option>
+                  {allEmployees.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Peran Melayani (Sales / Helper) */}
-            <div className="flex flex-col gap-1 text-left">
-              <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
-                Peran Melayani
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'Sales', label: 'Sales' },
-                  { value: 'Helper', label: 'Helper' }
-                ].map((role) => (
-                  <button
-                    key={role.value}
-                    type="button"
-                    onClick={() => setSalesRole(role.value)}
-                    className={`
-                      px-3 py-2 text-center rounded-xl border border-transparent font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer
-                      ${salesRole === role.value 
-                        ? 'bg-slate-800 text-white dark:text-slate-950 shadow-sm' 
-                        : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-105 active:scale-95'
-                      }
-                    `}
-                  >
-                    {role.label}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1">
+                  Helper (Opsional)
+                </label>
+                <select
+                  value={checkoutForm.helper}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, helper: e.target.value })}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/80 text-slate-855 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-950/50 outline-none transition-all duration-200 cursor-pointer"
+                >
+                  <option value="">-- Pilih Helper --</option>
+                  {allEmployees.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <Button
               variant="green"
               type="submit"
-              className="w-full py-3.5 flex items-center justify-center gap-2 !rounded-2xl"
+              className="w-full py-3.5 flex items-center justify-center gap-2 mt-3 !rounded-2xl"
             >
               <RefreshCw size={16} strokeWidth={2.5} />
               <span>Proses Tukar Tambah</span>
@@ -428,52 +450,195 @@ export const TradeInView = () => {
 
           {netDiff >= 0 ? (
             <>
-              <div className="flex flex-col gap-1">
-                <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Metode Pembayaran</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Tunai', 'Transfer Bank', 'Kartu Kredit', 'Paylater'].map((method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setPaymentMethod(method)}
-                      className={`
-                        px-2 py-2.5 text-center rounded-xl border border-transparent font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer
-                        ${paymentMethod === method 
-                          ? 'bg-slate-800 dark:bg-orange-500 text-white shadow-sm' 
-                          : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      {method}
-                    </button>
-                  ))}
-                </div>
+              {/* Tipe Pembayaran (Tunggal vs Split) */}
+              <div className="flex bg-slate-100 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/40 rounded-2xl p-1 select-none">
+                <button
+                  type="button"
+                  onClick={() => setIsSplit(false)}
+                  className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                    !isSplit
+                      ? 'bg-white dark:bg-slate-800 text-orange-700 dark:text-orange-400 shadow-sm'
+                      : 'text-slate-550 dark:text-slate-400 hover:text-slate-755 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Single Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSplit(true);
+                    setSplitAmount1(Math.round(sisaBayar / 2));
+                    setSplitAmount2(sisaBayar - Math.round(sisaBayar / 2));
+                  }}
+                  className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                    isSplit
+                      ? 'bg-white dark:bg-slate-800 text-orange-700 dark:text-orange-400 shadow-sm'
+                      : 'text-slate-550 dark:text-slate-400 hover:text-slate-755 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Split Payment
+                </button>
               </div>
 
-              {paymentMethod === 'Tunai' ? (
-                <div className="flex flex-col gap-3">
-                  <Input
-                    label="Uang Tunai Selisih (Rp)"
-                    type="number"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    required
-                    className="font-black text-lg text-slate-800 dark:text-slate-100"
-                    autoFocus
-                  />
-                  <div className="bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-4 flex justify-between items-center mt-1">
-                    <span className="font-extrabold text-xs text-slate-400 dark:text-slate-500">KEMBALIAN:</span>
-                    <span className="font-black text-base text-slate-800 dark:text-slate-200">
-                      {handleFormatRupiah(Math.max(0, (parseFloat(cashReceived) || sisaBayar) - sisaBayar))}
-                    </span>
+              {!isSplit && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Metode Pembayaran</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['Tunai', 'Transfer Bank'].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPaymentMethod(method)}
+                          className={`
+                            px-2 py-2.5 text-center rounded-xl border border-transparent font-extrabold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer
+                            ${paymentMethod === method 
+                              ? 'bg-slate-800 dark:bg-orange-500 text-white shadow-sm' 
+                              : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-350 hover:scale-105 active:scale-95'
+                            }
+                          `}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="border border-dashed border-slate-200 dark:border-slate-800/60 rounded-2xl bg-slate-50/60 dark:bg-slate-950/30 p-6 text-center">
-                  <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">SIMULASI TRANSFER BANK / KARTU</span>
-                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                    Lakukan transfer bank atau gesek kartu ke EDC toko untuk melunasi sisa selisih trade-in.
-                  </p>
+
+                  {/* Paylater Menu */}
+                  <div className="flex flex-col gap-1 mt-1.5">
+                    <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 pl-1">Paylater</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['Indodana', 'Kredivo', 'Spaylater', 'Akulaku'].map((provider) => {
+                        const paylaterMethod = `Paylater - ${provider}`;
+                        const isSelected = paymentMethod === paylaterMethod;
+                        return (
+                          <button
+                            key={provider}
+                            type="button"
+                            onClick={() => setPaymentMethod(paylaterMethod)}
+                            className={`
+                              px-1 py-2.5 text-center rounded-xl border border-transparent font-extrabold uppercase text-[8px] tracking-wider transition-all duration-200 cursor-pointer
+                              ${isSelected 
+                                ? 'bg-slate-800 dark:bg-orange-500 text-white shadow-sm' 
+                                : 'bg-slate-100/60 dark:bg-slate-800 text-slate-500 dark:text-slate-350 hover:scale-105 active:scale-95'
+                              }
+                            `}
+                          >
+                            {provider}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'Tunai' ? (
+                    <div className="flex flex-col gap-3">
+                      <Input
+                        label="Uang Tunai Selisih (Rp)"
+                        type="number"
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value)}
+                        required
+                        className="font-black text-lg text-slate-800 dark:text-slate-100"
+                        autoFocus
+                      />
+                      <div className="bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800/40 p-4 flex justify-between items-center mt-1">
+                        <span className="font-extrabold text-xs text-slate-400 dark:text-slate-500">KEMBALIAN:</span>
+                        <span className="font-black text-base text-slate-800 dark:text-slate-200">
+                          {handleFormatRupiah(Math.max(0, (parseFloat(cashReceived) || sisaBayar) - sisaBayar))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-slate-200 dark:border-slate-800/60 rounded-2xl bg-slate-50/60 dark:bg-slate-950/30 p-6 text-center">
+                      <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 block">
+                        {paymentMethod.startsWith('Paylater') ? `Simulasi Paylater (${paymentMethod.replace('Paylater - ', '')})` : 'SIMULASI TRANSFER BANK / KARTU'}
+                      </span>
+                      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                        {paymentMethod.startsWith('Paylater')
+                          ? `Silakan lakukan proses pengajuan limit/transaksi melalui aplikasi ${paymentMethod.replace('Paylater - ', '')} pelanggan. Transaksi akan tercatat setelah menekan tombol "Selesaikan Transaksi".`
+                          : 'Lakukan transfer bank atau gesek kartu ke EDC toko untuk melunasi sisa selisih trade-in.'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {isSplit && (
+                <div className="flex flex-col gap-4 border border-dashed border-slate-200 dark:border-slate-800/60 rounded-2xl p-4 bg-slate-50/30 dark:bg-slate-950/20">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">Pembayaran 1</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={splitMethod1}
+                        onChange={(e) => setSplitMethod1(e.target.value)}
+                        className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                      >
+                        {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number"
+                        placeholder="Nominal 1"
+                        value={splitAmount1}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setSplitAmount1(val);
+                          setSplitAmount2(Math.max(0, sisaBayar - val));
+                        }}
+                        className="!py-2 !text-xs !rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">Pembayaran 2</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={splitMethod2}
+                        onChange={(e) => setSplitMethod2(e.target.value)}
+                        className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                      >
+                        {['Tunai', 'Transfer Bank', 'Paylater - Indodana', 'Paylater - Kredivo', 'Paylater - Spaylater', 'Paylater - Akulaku'].map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number"
+                        placeholder="Nominal 2"
+                        value={splitAmount2}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setSplitAmount2(val);
+                          setSplitAmount1(Math.max(0, sisaBayar - val));
+                        }}
+                        className="!py-2 !text-xs !rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-500/5 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-800/40 p-3 flex flex-col gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <div className="flex justify-between">
+                      <span>Total Terinput:</span>
+                      <span className={splitAmount1 + splitAmount2 >= sisaBayar ? "text-emerald-500" : "text-rose-500"}>
+                        {handleFormatRupiah(splitAmount1 + splitAmount2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Sisa Bayar:</span>
+                      <span>{handleFormatRupiah(sisaBayar)}</span>
+                    </div>
+                    {(splitMethod1 === 'Tunai' || splitMethod2 === 'Tunai') && (splitAmount1 + splitAmount2 > sisaBayar) && (
+                      <div className="flex justify-between border-t border-dashed border-slate-200 dark:border-slate-800/40 pt-1.5 mt-1 text-slate-700 dark:text-slate-200">
+                        <span>Kembalian Tunai:</span>
+                        <span className="text-emerald-500 font-extrabold">
+                          {handleFormatRupiah((splitAmount1 + splitAmount2) - sisaBayar)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>
@@ -508,15 +673,14 @@ export const TradeInView = () => {
               </div>
             </div>
           )}
-
-          <div className="flex justify-end gap-2 mt-4 border-t border-slate-50 dark:border-slate-800/40 pt-3">
-            <Button variant="white" onClick={() => setShowPaymentModal(false)}>
-              Batal
-            </Button>
-            <Button variant="green" onClick={handleProcessTradeIn}>
-              Selesaikan Transaksi
-            </Button>
-          </div>
+            <div className="flex justify-end gap-2 mt-4 border-t border-slate-50 dark:border-slate-800/40 pt-3">
+              <Button variant="white" onClick={() => setShowPaymentModal(false)}>
+                Batal
+              </Button>
+              <Button variant="green" onClick={handleProcessTradeIn}>
+                Selesaikan Transaksi
+              </Button>
+            </div>
         </div>
       </Modal>
 
@@ -552,9 +716,17 @@ export const TradeInView = () => {
               <div className="flex justify-between">
                 <span>Sales:</span>
                 <span className="font-bold text-slate-700 dark:text-slate-200">
-                  {receiptData?.salesperson} {receiptData?.salespersonRole ? `(${receiptData.salespersonRole})` : ''}
+                  {receiptData?.salesperson || '-'}
                 </span>
               </div>
+              {receiptData?.helper && (
+                <div className="flex justify-between">
+                  <span>Helper:</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    {receiptData.helper}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Trade In details */}

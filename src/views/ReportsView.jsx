@@ -14,6 +14,7 @@ export const ReportsView = () => {
   // Modal States
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState({
     amount: '',
     description: ''
@@ -22,6 +23,8 @@ export const ReportsView = () => {
   // 1. Calculate General Dashboard Stats
   let totalRevenue = 0;
   let totalCost = 0;
+  let totalCashInflow = 0;
+  let totalTradeInAsset = 0;
   let totalTransactions = transactions.length;
 
   // Sales commissions map
@@ -37,7 +40,19 @@ export const ReportsView = () => {
 
   // Process all completed transactions
   transactions.forEach((tx) => {
-    totalRevenue += tx.total;
+    // 1. Omset murni dari subtotal item (jika tx.grosstotal tidak ada)
+    const subtotalItems = tx.items.reduce((sum, item) => sum + (item.hargaJual * item.qty), 0);
+    const grossVal = tx.grosstotal ?? subtotalItems;
+    
+    // 2. Aset Masuk (trade in value)
+    const tradeInVal = tx.tradeinvalue ?? (tx.tradeInDetails?.taksiranHarga || 0);
+    
+    // 3. Uang Masuk (Omset - Aset Masuk)
+    const cashFlowVal = tx.cashinflow ?? (grossVal - tradeInVal);
+
+    totalRevenue += grossVal;
+    totalCashInflow += cashFlowVal;
+    totalTradeInAsset += tradeInVal;
     
     // Sum up items inside transaction
     tx.items.forEach((item) => {
@@ -47,10 +62,10 @@ export const ReportsView = () => {
 
     // Track salesperson commission stats
     if (tx.salesperson && salesStats[tx.salesperson]) {
-      salesStats[tx.salesperson].totalSalesRevenue += tx.total;
+      salesStats[tx.salesperson].totalSalesRevenue += grossVal;
       
       const txCost = tx.items.reduce((sum, item) => sum + (item.hargaBeli || 0) * item.qty, 0);
-      salesStats[tx.salesperson].totalSalesProfit += (tx.total - txCost);
+      salesStats[tx.salesperson].totalSalesProfit += (grossVal - txCost);
     }
 
     if (tx.salesperson && salesStats[tx.salesperson]) {
@@ -60,6 +75,23 @@ export const ReportsView = () => {
 
   // Calculate total expenses
   const totalExpenses = expenses ? expenses.reduce((acc, exp) => acc + exp.amount, 0) : 0;
+
+  // Extract all trade-in assets from transactions
+  const tradeInAssets = transactions
+    .filter(tx => tx.tradeInDetails)
+    .map(tx => ({
+      id: tx.id,
+      date: tx.date,
+      invoiceNo: tx.invoiceNo,
+      model: tx.tradeInDetails.model,
+      warna: tx.tradeInDetails.warna || '-',
+      rom: tx.tradeInDetails.rom || '-',
+      taksiranHarga: tx.tradeInDetails.taksiranHarga || 0,
+      minus: tx.tradeInDetails.minus || '-'
+    }));
+
+  // Calculate Net Cash Inflow
+  const netCashInflow = totalCashInflow - totalExpenses;
 
   // Calculate Net Profit
   const netProfit = totalRevenue - totalCost - totalExpenses;
@@ -132,7 +164,7 @@ export const ReportsView = () => {
       </div>
 
       {/* DASHBOARD STATS ROW */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card title="TOTAL OMSET (REVENUE)" headerBg="bg-orange-100/70" bodyClassName="p-4">
           <div className="text-2xl font-black text-slate-800 dark:text-slate-100">
             {handleFormatRupiah(totalRevenue)}
@@ -157,6 +189,40 @@ export const ReportsView = () => {
           </div>
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 block">
             Omset - HPP - Biaya Operasional
+          </span>
+        </Card>
+
+        <Card 
+          title="TOTAL UANG MASUK" 
+          headerBg={netCashInflow < 0 ? "bg-red-100/70" : "bg-blue-100/70"} 
+          bodyClassName="p-4"
+        >
+          <div className={`text-2xl font-black ${netCashInflow < 0 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+            {handleFormatRupiah(netCashInflow)}
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 block">
+            arus kas tunai & transfer
+          </span>
+        </Card>
+
+        <Card 
+          title="NILAI ASET MASUK" 
+          headerBg="bg-amber-100/70" 
+          bodyClassName="p-4"
+          headerAction={
+            <button
+              onClick={() => setShowAssetModal(true)}
+              className="px-2.5 py-1 text-[8.5px] font-black uppercase tracking-wider bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-700 dark:text-amber-400 hover:scale-105 active:scale-95 transition-all cursor-pointer rounded-lg shadow-sm"
+            >
+              Detail
+            </button>
+          }
+        >
+          <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
+            {handleFormatRupiah(totalTradeInAsset)}
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 block">
+            total nilai barang bekas (trade-in)
           </span>
         </Card>
 
@@ -301,6 +367,56 @@ export const ReportsView = () => {
           </div>
           <div className="flex justify-end gap-2 mt-2 border-t border-slate-100 dark:border-slate-800/40 pt-3">
             <Button variant="white" onClick={() => setShowDetailModal(false)} className="w-full sm:w-auto">
+              Tutup Rekap
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* TRADE-IN ASSETS DETAIL MODAL */}
+      <Modal
+        isOpen={showAssetModal}
+        onClose={() => setShowAssetModal(false)}
+        title="Rekap Detail Aset Masuk (Barang Trade-In)"
+        maxWidth="max-w-3xl"
+      >
+        <div className="flex flex-col gap-4 text-left">
+          <p className="text-xs font-semibold text-slate-500 m-0">
+            Berikut adalah rincian handphone bekas (aset masuk) yang diterima toko dari transaksi tukar tambah pelanggan.
+          </p>
+          <div className="max-h-96 overflow-y-auto border border-slate-100 dark:border-slate-800/40 rounded-2xl">
+            <Table
+              headers={['Tanggal', 'No Invoice', 'Model / Spek', 'Minus / Kerusakan', 'Nilai Aset']}
+              rows={tradeInAssets}
+              renderRow={(asset) => (
+                <tr key={asset.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs font-semibold border-b border-slate-100 dark:border-slate-800/40 text-slate-700 dark:text-slate-350">
+                  <td className="px-4 py-3 text-slate-550 dark:text-slate-400 font-mono text-[10px]">
+                    {new Date(asset.date).toLocaleDateString('id-ID')}
+                  </td>
+                  <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-100 font-mono">
+                    {asset.invoiceNo}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 block">{asset.model}</span>
+                    <span className="text-[10px] text-slate-450 dark:text-slate-500">{asset.warna} • {asset.rom}</span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-[200px] truncate" title={asset.minus}>
+                    {asset.minus || '-'}
+                  </td>
+                  <td className="px-4 py-3 font-mono font-black text-amber-600 dark:text-amber-500">
+                    {handleFormatRupiah(asset.taksiranHarga)}
+                  </td>
+                </tr>
+              )}
+            />
+            {tradeInAssets.length === 0 && (
+              <p className="text-center py-6 font-bold text-slate-400 dark:text-slate-500 m-0 text-xs bg-slate-50 dark:bg-slate-900/40">
+                Belum ada aset barang bekas masuk dari transaksi tukar tambah.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-2 border-t border-slate-100 dark:border-slate-800/40 pt-3">
+            <Button variant="white" onClick={() => setShowAssetModal(false)} className="w-full sm:w-auto">
               Tutup Rekap
             </Button>
           </div>

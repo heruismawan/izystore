@@ -59,7 +59,6 @@ export const initialInventory = [
     hargaJual: 11500000,
     stok: 1,
     kategori: 'Gadget',
-    batteryHealth: 84,
     garansiAsal: 'iBox',
     garansiAktif: false,
     gradeFisik: 'A',
@@ -79,7 +78,6 @@ export const initialInventory = [
     hargaJual: 5200000,
     stok: 1,
     kategori: 'Gadget',
-    batteryHealth: 79,
     garansiAsal: 'Inter',
     garansiAktif: false,
     gradeFisik: 'B',
@@ -99,7 +97,7 @@ export const initialInventory = [
     hargaBeli: 150000,
     hargaJual: 350000,
     stok: 10,
-    kategori: 'Aksesoris',
+    kategori: 'Sparepart',
     createdAt: '2026-06-01T08:00:00Z'
   },
   {
@@ -114,7 +112,7 @@ export const initialInventory = [
     hargaBeli: 1200000,
     hargaJual: 2200000,
     stok: 5,
-    kategori: 'Aksesoris',
+    kategori: 'Sparepart',
     createdAt: '2026-06-01T08:30:00Z'
   }
 ];

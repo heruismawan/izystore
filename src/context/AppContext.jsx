@@ -242,7 +242,7 @@ export const AppProvider = ({ children }) => {
           hargaJual: Math.round(tradeInDetails.taksiranHarga * 1.25), // Mock resale price markup
           stok: 1,
           kategori: 'Gadget',
-          batteryHealth: parseInt(tradeInDetails.batteryHealth) || 80,
+          batteryHealth: tradeInDetails.batteryHealth ? parseInt(tradeInDetails.batteryHealth) : null,
           garansiAsal: tradeInDetails.garansiAsal || 'Inter',
           garansiAktif: false,
           gradeFisik: tradeInDetails.gradeFisik || 'B',
@@ -264,6 +264,7 @@ export const AppProvider = ({ children }) => {
       date: new Date().toISOString(),
       items: items.map(item => ({...item})),
       salesperson: salesperson || 'Tanpa Sales',
+      helper: transactionData.helper || null,
       salespersonRole: salespersonRole || 'Sales',
       discount: discount || 0,
       total,
